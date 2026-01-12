@@ -237,12 +237,20 @@ export default function SyllablesBlending({
       setFeedback("correct");
       if (soundEnabled) {
         playCorrectSound();
+        // Speak the correct answer
+        setTimeout(async () => {
+          await speakWord(currentQuestion.correctAnswer);
+        }, 300);
       }
     } else {
       trackEvent("answer_wrong", { tool: "syllables-blending" });
       setFeedback("wrong");
       if (soundEnabled) {
         playWrongSound();
+        // Speak the correct answer
+        setTimeout(async () => {
+          await speakWord(currentQuestion.correctAnswer);
+        }, 500);
       }
     }
 

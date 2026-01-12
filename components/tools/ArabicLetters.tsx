@@ -104,9 +104,21 @@ export default function ArabicLetters({
     if (isCorrect) {
       trackEvent("answer_correct", { tool: "arabic-letters" });
       setFeedback("correct");
+      // Speak the correct letter
+      if (soundEnabled) {
+        setTimeout(async () => {
+          await speakLetter(currentQuestion.letter, currentQuestion.name);
+        }, 300);
+      }
     } else {
       trackEvent("answer_wrong", { tool: "arabic-letters" });
       setFeedback("wrong");
+      // Speak the correct letter
+      if (soundEnabled) {
+        setTimeout(async () => {
+          await speakLetter(currentQuestion.letter, currentQuestion.name);
+        }, 500);
+      }
     }
 
     setTimeout(() => {

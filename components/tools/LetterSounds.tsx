@@ -101,9 +101,21 @@ export default function LetterSounds({
     if (isCorrect) {
       trackEvent("answer_correct", { tool: "letter-sounds" });
       setFeedback("correct");
+      // Speak the correct letter
+      if (soundEnabled) {
+        setTimeout(async () => {
+          await speakLetter(currentQuestion.letter, currentQuestion.sound);
+        }, 300);
+      }
     } else {
       trackEvent("answer_wrong", { tool: "letter-sounds" });
       setFeedback("wrong");
+      // Speak the correct letter
+      if (soundEnabled) {
+        setTimeout(async () => {
+          await speakLetter(currentQuestion.letter, currentQuestion.sound);
+        }, 500);
+      }
     }
 
     setTimeout(() => {

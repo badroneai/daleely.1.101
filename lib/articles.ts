@@ -41,6 +41,54 @@ export const articles: Article[] = [
     category: "arabic",
     publishedAt: "2024-02-05",
   },
+  {
+    slug: "ready-worksheets-by-grade",
+    title: "أوراق عمل جاهزة حسب الصف",
+    description:
+      "دليل سريع لاستخدام أوراق العمل الجاهزة حسب المرحلة الدراسية. قوالب جاهزة للطباعة والتطبيق الفوري.",
+    category: "teachers",
+    publishedAt: "2024-02-10",
+  },
+  {
+    slug: "quick-classroom-activities",
+    title: "أنشطة صفية سريعة",
+    description:
+      "مجموعة من الأنشطة الصفية السريعة التي يمكن تطبيقها في 5 دقائق. روتين افتتاح وختام جاهز.",
+    category: "teachers",
+    publishedAt: "2024-02-10",
+  },
+  {
+    slug: "exit-tickets-guide",
+    title: "دليل بطاقات الخروج",
+    description:
+      "كيفية استخدام بطاقات الخروج لتقييم فهم الطلاب بسرعة. قوالب جاهزة وأمثلة عملية.",
+    category: "teachers",
+    publishedAt: "2024-02-10",
+  },
+  {
+    slug: "formative-assessment-questions",
+    title: "أسئلة تقويم تكويني",
+    description:
+      "مجموعة من الأسئلة السريعة للتقويم التكويني. أساليب فعالة لقياس فهم الطلاب أثناء الدرس.",
+    category: "teachers",
+    publishedAt: "2024-02-10",
+  },
+  {
+    slug: "remedial-plan-short",
+    title: "علاج الضعف: خطة قصيرة",
+    description:
+      "خطة عملية قصيرة لدعم الطلاب المتعثرين. أنشطة وتمارين بسيطة لعلاج الضعف في المهارات الأساسية.",
+    category: "teachers",
+    publishedAt: "2024-02-10",
+  },
+  {
+    slug: "enrichment-for-advanced",
+    title: "إثراء للمتفوقين",
+    description:
+      "أنشطة متقدمة لتحدي الطلاب المتفوقين. استراتيجيات لإثراء المحتوى وتنمية المهارات العليا.",
+    category: "teachers",
+    publishedAt: "2024-02-10",
+  },
 ];
 
 export function getArticleBySlug(

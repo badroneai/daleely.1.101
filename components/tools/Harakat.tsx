@@ -152,12 +152,20 @@ export default function Harakat({
       setFeedback("correct");
       if (soundEnabled) {
         playCorrectSound();
+        // Speak the correct word
+        setTimeout(async () => {
+          await speakWord(currentQuestion.word);
+        }, 300);
       }
     } else {
       trackEvent("answer_wrong", { tool: "harakat" });
       setFeedback("wrong");
       if (soundEnabled) {
         playWrongSound();
+        // Speak the correct word
+        setTimeout(async () => {
+          await speakWord(currentQuestion.word);
+        }, 500);
       }
     }
 

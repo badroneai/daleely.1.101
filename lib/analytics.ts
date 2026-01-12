@@ -7,7 +7,10 @@ export type AnalyticsEvent =
   | "answer_wrong"
   | "sound_toggle"
   | "session_complete"
-  | "page_leave_early";
+  | "page_leave_early"
+  | "worksheet_generated"
+  | "worksheet_printed"
+  | "worksheet_downloaded";
 
 interface EventData {
   [key: string]: string | number | boolean;

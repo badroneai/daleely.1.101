@@ -218,12 +218,20 @@ export default function SightWordsAr({
       setFeedback("correct");
       if (soundEnabled) {
         playCorrectSound();
+        // Speak the correct word
+        setTimeout(async () => {
+          await speakWord(currentQuestion.word.word);
+        }, 300);
       }
     } else {
       trackEvent("answer_wrong", { tool: "sight-words-ar" });
       setFeedback("wrong");
       if (soundEnabled) {
         playWrongSound();
+        // Speak the correct word
+        setTimeout(async () => {
+          await speakWord(currentQuestion.word.word);
+        }, 500);
       }
     }
 

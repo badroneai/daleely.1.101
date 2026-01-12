@@ -1,12 +1,78 @@
 import PageLayout from "@/components/PageLayout";
+import ParentsResourceLibrary from "@/components/parents/ParentsResourceLibrary";
+import ParentsFAQ from "@/components/parents/ParentsFAQ";
+import { generatePillarMetadata } from "@/lib/metadata";
+import type { Metadata } from "next";
 
-export const metadata = {
-  title: "لأولياء الأمور - Daleely.ai",
-  description: "إرشادات ونصائح لأولياء الأمور لمساعدة أطفالهم في التعلم",
-  alternates: {
-    canonical: "https://daleely.ai/parents",
+export const metadata: Metadata = generatePillarMetadata(
+  "لأولياء الأمور",
+  "إرشادات ونصائح عملية لأولياء الأمور: خطط 14 يوم، دليل اختيار الأدوات، لوحة متابعة منزلية، وحلول للمشاكل الشائعة",
+  "parents"
+);
+
+// FAQ for Schema Markup (text only, no JSX)
+const faqForSchema = [
+  {
+    question: "كم مرة نستخدم الأداة أسبوعياً؟",
+    answer:
+      "ننصح باستخدام الأداة 3-5 مرات أسبوعياً لمدة 5-10 دقائق في كل مرة. المهم هو الانتظام وليس الكمية. يمكنك استخدام خطة 14 يوم الجاهزة لضمان الانتظام.",
   },
-};
+  {
+    question: "متى أرفع المستوى؟",
+    answer:
+      "ارفع المستوى عندما ينجح طفلك في 80% من التمارين بسهولة. لا تتعجل - التثبيت أهم من السرعة. استخدم دليل اختيار الأداة لاختيار المستوى المناسب.",
+  },
+  {
+    question: "كيف أعرف أن الطفل فعلاً تحسن؟",
+    answer:
+      "راقب: سرعة الإجابة، ثقة الطفل، قلة الأخطاء، ورغبته في الممارسة. استخدم لوحة المتابعة المنزلية لتتبع التقدم بشكل منتظم.",
+  },
+  {
+    question: "هل الأفضل الصوت أم بدونه؟",
+    answer:
+      "ابدأ بالصوت لمساعدة الطفل في التعلم، ثم أطفئه تدريجياً لتعزيز الاستقلالية. الصوت مفيد خاصة في البداية وفي تعلم الحروف والكلمات.",
+  },
+  {
+    question: "كم من الوقت يجب أن تستغرق الجلسة؟",
+    answer:
+      "5-10 دقائق كافية للأطفال الصغار (6-8 سنوات)، و10-15 دقيقة للأطفال الأكبر (9-12 سنة). المهم هو الجودة وليس الكمية. استخدم قواعد استخدام الأجهزة لضمان التوازن.",
+  },
+  {
+    question: "ماذا لو رفض الطفل استخدام الأداة؟",
+    answer:
+      "لا تجبره. جرب: تغيير الوقت، جعله ممتعاً (نقاط/مكافآت)، أو اختيار أداة مختلفة. راجع مقال \"طفلي يمل بسرعة\" لحلول عملية. التعلم يجب أن يكون ممتعاً.",
+  },
+  {
+    question: "هل يمكن استخدام أكثر من أداة في نفس اليوم؟",
+    answer:
+      "نعم، لكن لا تجعل الجلسات متتالية. اترك فاصل زمني بين الجلسات. الأفضل: أداة واحدة في الصباح وأخرى في المساء. استخدم لوحة المتابعة لتتبع الاستخدام.",
+  },
+  {
+    question: "كيف أتعامل مع الأخطاء المتكررة؟",
+    answer:
+      "لا تعاقب. استخدم سجل الأخطاء الشائعة لتحديد المشكلة. راجع الأساسيات، استخدم أداة أبسط، أو استشر المعلم. راجع مقال \"الفهم vs الحفظ\" لضمان الفهم وليس فقط الحفظ.",
+  },
+  {
+    question: "ما الفرق بين الحفظ والفهم؟",
+    answer:
+      "الحفظ هو تذكر المعلومات بدون فهم (ينسى بسرعة)، بينما الفهم هو فهم المفهوم والسبب (يدوم أطول). راجع مقال \"الفهم vs الحفظ\" لمعرفة كيفية التركيز على الفهم.",
+  },
+  {
+    question: "كيف أوازن بين التعلم والشاشة؟",
+    answer:
+      "حدد وقتاً محدداً للتعلم (10 دقائق)، اجعل التعلم قبل الترفيه، استخدم مؤقت، وأوقف التنبيهات. راجع \"قواعد استخدام الأجهزة\" لإرشادات مفصلة.",
+  },
+  {
+    question: "متى أستخدم خطة 14 يوم؟",
+    answer:
+      "استخدم خطة 14 يوم عندما تريد تحقيق هدف محدد (مثلاً: تثبيت جدول الضرب، تحسين القراءة، تقوية الحساب الذهني). الخطة توفر هيكل واضح ومتابعة يومية.",
+  },
+  {
+    question: "كيف أختار الأداة المناسبة لطفلي؟",
+    answer:
+      "استخدم دليل اختيار الأداة. اختر: عمر الطفل/الصف، مستوى الطفل (مبتدئ/متوسط/متقدم)، الهدف (مراجعة/تأسيس/إثراء)، والوقت المتاح. ستحصل على توصية مباشرة.",
+  },
+];
 
 export default function ParentsPage() {
   return (
@@ -16,11 +82,41 @@ export default function ParentsPage() {
         { label: "لأولياء الأمور" },
       ]}
     >
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">لأولياء الأمور</h1>
-        <p className="text-lg text-gray-600 mb-8">
-          قريباً: إرشادات ونصائح لمساعدة أطفالكم في التعلم
-        </p>
+      <div className="max-w-6xl mx-auto">
+        {/* H1 + Introduction */}
+        <div className="mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            لأولياء الأمور
+          </h1>
+          <p className="text-lg text-gray-600 leading-relaxed max-w-3xl">
+            إرشادات ونصائح عملية لمساعدتك في دعم تعلم أطفالك. من خطط 14 يوم الجاهزة إلى حلول المشاكل الشائعة، كل ما تحتاجه لتحويل التعلم إلى روتين منزلي ممتع وفعال.
+          </p>
+        </div>
+
+        {/* Resource Library Sections */}
+        <ParentsResourceLibrary />
+
+        {/* FAQ Section */}
+        <ParentsFAQ />
+
+        {/* FAQ Schema Markup */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: faqForSchema.map((item) => ({
+                "@type": "Question",
+                name: item.question,
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: item.answer,
+                },
+              })),
+            }),
+          }}
+        />
       </div>
     </PageLayout>
   );
