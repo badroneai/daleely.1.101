@@ -4,9 +4,9 @@ import Link from "next/link";
 
 export default function TeachersResourceLibrary() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 fade-in">
       {/* تحضير سريع (5 دقائق) */}
-      <section className="bg-white rounded-xl shadow-lg p-6">
+      <section className="bg-white rounded-xl shadow-lg p-6 slide-up">
         <div className="flex items-center gap-3 mb-4">
           <div className="text-4xl">⚡</div>
           <h2 className="text-2xl font-bold text-gray-900">تحضير سريع (5 دقائق)</h2>

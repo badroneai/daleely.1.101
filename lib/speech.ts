@@ -2,10 +2,12 @@
 // This is the main interface that all tools should use
 // Implementation can be swapped (Web Speech API, audio files, TTS API, etc.)
 
+export type MathOperation = "add" | "subtract" | "multiply" | "divide";
+
 export interface SpeechProvider {
   /**
    * Speak a number in Arabic
-   * @param number - The number to speak (0-100)
+   * @param number - The number to speak (0-100+)
    */
   speakNumber(number: number): Promise<void>;
 
@@ -27,6 +29,12 @@ export interface SpeechProvider {
    * @param text - The text to speak
    */
   speakText(text: string): Promise<void>;
+
+  /**
+   * Speak a math operation in Arabic
+   * @param operation - The math operation ("add", "subtract", "multiply", "divide")
+   */
+  speakOperation(operation: MathOperation): Promise<void>;
 
   /**
    * Check if speech is available
@@ -107,6 +115,16 @@ export async function speakText(text: string): Promise<void> {
   const provider = getSpeechProvider();
   if (provider.isEnabled() && provider.isAvailable()) {
     await provider.speakText(text);
+  }
+}
+
+/**
+ * Speak a math operation in Arabic
+ */
+export async function speakOperation(operation: MathOperation): Promise<void> {
+  const provider = getSpeechProvider();
+  if (provider.isEnabled() && provider.isAvailable()) {
+    await provider.speakOperation(operation);
   }
 }
 

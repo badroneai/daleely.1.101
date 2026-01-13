@@ -29,6 +29,7 @@ export default function TellingTime({
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [questionCount, setQuestionCount] = useState(0);
   const [showAnalog, setShowAnalog] = useState(true);
+  const [showDigital, setShowDigital] = useState(false);
 
   const generateRandomTime = () => {
     const hours = Math.floor(Math.random() * 12) + 1;
@@ -57,22 +58,88 @@ export default function TellingTime({
       "ثنتا عشرة",
     ];
 
+    // Validate inputs
+    if (hours < 1 || hours > 12) {
+      return `الساعة ${hours}`;
+    }
+    
+    const hourName = hourNames[hours - 1];
+    
     if (minutes === 0) {
-      return `${hourNames[hours - 1]} بالضبط`;
+      return `الساعة ${hourName}`;
     } else if (minutes === 15) {
-      return `الربع بعد ${hourNames[hours - 1]}`;
+      return `الساعة ${hourName} و خمسة عشر`;
     } else if (minutes === 30) {
-      return `النصف بعد ${hourNames[hours - 1]}`;
+      return `الساعة ${hourName} و ثلاثون`;
     } else if (minutes === 45) {
       const nextHour = hours === 12 ? 1 : hours + 1;
-      return `الربع إلا ${hourNames[nextHour - 1]}`;
-    } else if (minutes < 30) {
-      return `${minutes} دقيقة بعد ${hourNames[hours - 1]}`;
+      return `الساعة ${hourNames[nextHour - 1]} إلا ربع`;
     } else {
-      const nextHour = hours === 12 ? 1 : hours + 1;
-      const remainingMinutes = 60 - minutes;
-      return `${remainingMinutes} دقيقة إلا ${hourNames[nextHour - 1]}`;
+      // For other minutes, use "الساعة X و Y" format
+      const minuteText = formatMinutesArabic(minutes);
+      if (minutes < 30) {
+        return `الساعة ${hourName} و ${minuteText}`;
+      } else {
+        const nextHour = hours === 12 ? 1 : hours + 1;
+        const remainingMinutes = 60 - minutes;
+        const remainingText = formatMinutesArabic(remainingMinutes);
+        return `الساعة ${hourNames[nextHour - 1]} إلا ${remainingText}`;
+      }
     }
+  };
+
+  const formatMinutesArabic = (minutes: number): string => {
+    // Arabic number names for minutes (masculine form for minutes)
+    const numberNames: { [key: number]: string } = {
+      1: "واحد",
+      2: "اثنان",
+      3: "ثلاثة",
+      4: "أربعة",
+      5: "خمسة",
+      6: "ستة",
+      7: "سبعة",
+      8: "ثمانية",
+      9: "تسعة",
+      10: "عشرة",
+      11: "أحد عشر",
+      12: "اثنا عشر",
+      13: "ثلاثة عشر",
+      14: "أربعة عشر",
+      15: "خمسة عشر",
+      16: "ستة عشر",
+      17: "سبعة عشر",
+      18: "ثمانية عشر",
+      19: "تسعة عشر",
+      20: "عشرون",
+      30: "ثلاثون",
+      40: "أربعون",
+      50: "خمسون",
+    };
+
+    if (numberNames[minutes]) {
+      return numberNames[minutes];
+    }
+
+    // For numbers 21-29, 31-39, etc.
+    if (minutes > 20 && minutes < 30) {
+      const ones = minutes % 10;
+      const onesName = numberNames[ones] || ones.toString();
+      return `${onesName} و عشرون`;
+    } else if (minutes > 30 && minutes < 40) {
+      const ones = minutes % 10;
+      const onesName = numberNames[ones] || ones.toString();
+      return `${onesName} و ثلاثون`;
+    } else if (minutes > 40 && minutes < 50) {
+      const ones = minutes % 10;
+      const onesName = numberNames[ones] || ones.toString();
+      return `${onesName} و أربعون`;
+    } else if (minutes > 50 && minutes < 60) {
+      const ones = minutes % 10;
+      const onesName = numberNames[ones] || ones.toString();
+      return `${onesName} و خمسون`;
+    }
+
+    return `${minutes}`;
   };
 
   const formatTimeEnglish = (hours: number, minutes: number): string => {
@@ -96,8 +163,17 @@ export default function TellingTime({
     // Speak the time
     if (soundEnabled) {
       setTimeout(async () => {
-        const arabicTime = formatTimeArabic(time.hours, time.minutes);
-        await speakText(arabicTime);
+        if (timeFormat === "arabic" || timeFormat === "both") {
+          const arabicTime = formatTimeArabic(time.hours, time.minutes);
+          await speakText(arabicTime);
+        }
+        if (timeFormat === "english" || timeFormat === "both") {
+          if (timeFormat === "both") {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+          const englishTime = formatTimeEnglish(time.hours, time.minutes);
+          await speakText(englishTime);
+        }
       }, 300);
     }
   };
@@ -158,8 +234,17 @@ export default function TellingTime({
         playWrongSound();
         // Speak the correct answer
         setTimeout(async () => {
-          const arabicTime = formatTimeArabic(currentTime.hours, currentTime.minutes);
-          await speakText(arabicTime);
+          if (timeFormat === "arabic" || timeFormat === "both") {
+            const arabicTime = formatTimeArabic(currentTime.hours, currentTime.minutes);
+            await speakText(arabicTime);
+          }
+          if (timeFormat === "english" || timeFormat === "both") {
+            if (timeFormat === "both") {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            const englishTime = formatTimeEnglish(currentTime.hours, currentTime.minutes);
+            await speakText(englishTime);
+          }
         }, 500);
       }
     }
@@ -173,8 +258,17 @@ export default function TellingTime({
       // Speak the next time
       if (soundEnabled) {
         setTimeout(async () => {
-          const arabicTime = formatTimeArabic(nextTime.hours, nextTime.minutes);
-          await speakText(arabicTime);
+          if (timeFormat === "arabic" || timeFormat === "both") {
+            const arabicTime = formatTimeArabic(nextTime.hours, nextTime.minutes);
+            await speakText(arabicTime);
+          }
+          if (timeFormat === "english" || timeFormat === "both") {
+            if (timeFormat === "both") {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            const englishTime = formatTimeEnglish(nextTime.hours, nextTime.minutes);
+            await speakText(englishTime);
+          }
         }, 300);
       }
     }, 2500);
@@ -195,10 +289,26 @@ export default function TellingTime({
     setFeedback(null);
   };
 
-  // Calculate clock hand angles
+  // Calculate clock hand angles - precise calculation
   const getClockHands = (hours: number, minutes: number) => {
-    const hourAngle = (hours % 12) * 30 + minutes * 0.5;
-    const minuteAngle = minutes * 6;
+    // Convert to 12-hour format for calculation (12 becomes 0 for angle calculation)
+    // Hours: 12 should be treated as 0, 1-11 as 1-11
+    const hourForAngle = hours % 12;
+    
+    // Hour hand calculation:
+    // - Each hour = 30 degrees (360/12)
+    // - Each minute moves hour hand by 0.5 degrees (30/60)
+    // - Start at -90 degrees (top of clock = 12 o'clock)
+    // Example: 12:55 → (0 * 30) + (55 * 0.5) - 90 = 0 + 27.5 - 90 = -62.5° (just past 12)
+    // Example: 1:00 → (1 * 30) + (0 * 0.5) - 90 = 30 - 90 = -60° (at 1)
+    const hourAngle = (hourForAngle * 30) + (minutes * 0.5) - 90;
+    
+    // Minute hand calculation:
+    // - Each minute = 6 degrees (360/60)
+    // - Start at -90 degrees (top of clock = 0 minutes)
+    // Example: 55 minutes → (55 * 6) - 90 = 330 - 90 = 240° (at 11)
+    const minuteAngle = (minutes * 6) - 90;
+    
     return { hourAngle, minuteAngle };
   };
 
@@ -270,69 +380,135 @@ export default function TellingTime({
         </p>
       </div>
 
-      {/* Analog Clock */}
-      {showAnalog && (
+      {/* Digital Clock */}
+      {showDigital && (
+        <div className="flex justify-center mb-6">
+          <div className="bg-white border-2 border-primary-300 rounded-xl p-8 shadow-lg">
+            <div className="text-center">
+              <p className="text-6xl md:text-8xl font-mono font-bold text-primary-600 mb-2">
+                {formatTimeEnglish(currentTime!.hours, currentTime!.minutes).split(" ")[0]}
+              </p>
+              <p className="text-2xl font-semibold text-primary-500 mb-4">
+                {formatTimeEnglish(currentTime!.hours, currentTime!.minutes).split(" ")[1]}
+              </p>
+              <button
+                onClick={async () => {
+                  if (soundEnabled && currentTime) {
+                    setSpeechEnabled(true);
+                    if (timeFormat === "arabic" || timeFormat === "both") {
+                      const arabicTime = formatTimeArabic(currentTime.hours, currentTime.minutes);
+                      await speakText(arabicTime);
+                    }
+                    if (timeFormat === "english" || timeFormat === "both") {
+                      if (timeFormat === "both") {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                      }
+                      const englishTime = formatTimeEnglish(currentTime.hours, currentTime.minutes);
+                      await speakText(englishTime);
+                    }
+                  }
+                }}
+                className="btn-primary text-sm px-6 py-3"
+              >
+                🔊 استمع للوقت
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Analog Clock - SVG based for precision */}
+      {showAnalog && currentTime && (
         <div className="flex justify-center">
-          <div className="relative w-64 h-64 md:w-80 md:h-80 border-4 border-gray-800 rounded-full bg-white">
-            {/* Clock face */}
+          <svg
+            width="320"
+            height="320"
+            viewBox="0 0 320 320"
+            className="w-64 h-64 md:w-80 md:h-80"
+          >
+            {/* Clock face circle */}
+            <circle
+              cx="160"
+              cy="160"
+              r="150"
+              fill="white"
+              stroke="#1f2937"
+              strokeWidth="4"
+              className="shadow-lg"
+            />
+            
+            {/* Hour markers */}
             {Array.from({ length: 12 }, (_, i) => {
               const angle = (i * 30 - 90) * (Math.PI / 180);
-              const radius = 120;
-              const x = Math.cos(angle) * radius;
-              const y = Math.sin(angle) * radius;
+              const x1 = 160 + Math.cos(angle) * 130;
+              const y1 = 160 + Math.sin(angle) * 130;
+              const x2 = 160 + Math.cos(angle) * 140;
+              const y2 = 160 + Math.sin(angle) * 140;
               return (
-                <div
-                  key={i}
-                  className="absolute text-lg font-bold text-gray-800"
-                  style={{
-                    left: `calc(50% + ${x}px)`,
-                    top: `calc(50% + ${y}px)`,
-                    transform: "translate(-50%, -50%)",
-                  }}
-                >
-                  {i + 1}
-                </div>
+                <line
+                  key={`marker-${i}`}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke="#1f2937"
+                  strokeWidth="3"
+                />
               );
             })}
-            {/* Hour hand */}
-            <div
-              className="absolute bg-gray-800 rounded-full"
-              style={{
-                width: "6px",
-                height: "60px",
-                left: "50%",
-                top: "50%",
-                transformOrigin: "bottom center",
-                transform: `translate(-50%, -100%) rotate(${hourAngle}deg)`,
-                zIndex: 2,
-              }}
-            />
+            
+            {/* Hour numbers */}
+            {Array.from({ length: 12 }, (_, i) => {
+              const hourNumber = i === 0 ? 12 : i;
+              const angle = (i * 30 - 90) * (Math.PI / 180);
+              const x = 160 + Math.cos(angle) * 110;
+              const y = 160 + Math.sin(angle) * 110;
+              return (
+                <text
+                  key={`number-${i}`}
+                  x={x}
+                  y={y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize="24"
+                  fontWeight="bold"
+                  fill="#1f2937"
+                >
+                  {hourNumber}
+                </text>
+              );
+            })}
+            
             {/* Minute hand */}
-            <div
-              className="absolute bg-gray-800 rounded-full"
-              style={{
-                width: "4px",
-                height: "90px",
-                left: "50%",
-                top: "50%",
-                transformOrigin: "bottom center",
-                transform: `translate(-50%, -100%) rotate(${minuteAngle}deg)`,
-                zIndex: 1,
-              }}
+            <line
+              x1="160"
+              y1="160"
+              x2={160 + Math.cos((currentTime.minutes * 6 - 90) * (Math.PI / 180)) * 100}
+              y2={160 + Math.sin((currentTime.minutes * 6 - 90) * (Math.PI / 180)) * 100}
+              stroke="#1f2937"
+              strokeWidth="4"
+              strokeLinecap="round"
             />
+            
+            {/* Hour hand - precise calculation */}
+            <line
+              x1="160"
+              y1="160"
+              x2={160 + Math.cos(((currentTime.hours % 12) * 30 + currentTime.minutes * 0.5 - 90) * (Math.PI / 180)) * 70}
+              y2={160 + Math.sin(((currentTime.hours % 12) * 30 + currentTime.minutes * 0.5 - 90) * (Math.PI / 180)) * 70}
+              stroke="#1f2937"
+              strokeWidth="6"
+              strokeLinecap="round"
+            />
+            
             {/* Center dot */}
-            <div
-              className="absolute bg-gray-800 rounded-full"
-              style={{
-                width: "12px",
-                height: "12px",
-                left: "50%",
-                top: "50%",
-                transform: "translate(-50%, -50%)",
-                zIndex: 3,
-              }}
+            <circle
+              cx="160"
+              cy="160"
+              r="8"
+              fill="#1f2937"
             />
-          </div>
+          </svg>
         </div>
       )}
 
@@ -381,13 +557,19 @@ export default function TellingTime({
         )}
       </div>
 
-      {/* Toggle analog clock */}
-      <div className="flex justify-center">
+      {/* Toggle clocks */}
+      <div className="flex flex-wrap gap-4 justify-center">
         <button
           onClick={() => setShowAnalog(!showAnalog)}
           className="btn-secondary text-sm"
         >
-          {showAnalog ? "إخفاء الساعة" : "إظهار الساعة"}
+          {showAnalog ? "إخفاء الساعة العادية" : "إظهار الساعة العادية"}
+        </button>
+        <button
+          onClick={() => setShowDigital(!showDigital)}
+          className="btn-secondary text-sm"
+        >
+          {showDigital ? "إخفاء الساعة الرقمية" : "إظهار الساعة الرقمية"}
         </button>
       </div>
 

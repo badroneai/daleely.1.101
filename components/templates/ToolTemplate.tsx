@@ -30,9 +30,9 @@ export default function ToolTemplate({
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto fade-in">
       {/* H1 + Description */}
-      <div className="mb-8">
+      <div className="mb-8 slide-up">
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
           {tool.title}
         </h1>
@@ -43,14 +43,14 @@ export default function ToolTemplate({
 
 
       {/* Educational Tip */}
-      <div className="bg-primary-50 border-r-4 border-primary-500 p-4 mb-6 rounded" role="note" aria-label="نصيحة تعليمية">
+      <div className="bg-primary-50 border-r-4 border-primary-500 p-4 mb-6 rounded slide-up" role="note" aria-label="نصيحة تعليمية">
         <p className="text-primary-900 font-medium">
           💡 نصيحة: {tool.category === "math" ? "مارس يومياً لمدة 10 دقائق لتحسين النتائج" : "استمع للأصوات بعناية وكررها"}
         </p>
       </div>
 
       {/* Interactive Tool */}
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-8 scale-in">
         {children}
       </div>
 
@@ -59,7 +59,11 @@ export default function ToolTemplate({
         <h2 className="text-2xl font-bold text-gray-900 mb-6">أسئلة شائعة</h2>
         <div className="space-y-4">
           {faq.map((item, index) => (
-            <div key={index} className="bg-white rounded-lg shadow-md p-6">
+            <div 
+              key={index} 
+              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200 slide-up"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 {item.question}
               </h3>
@@ -93,11 +97,12 @@ export default function ToolTemplate({
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">أدوات مرتبطة</h2>
           <div className="grid md:grid-cols-2 gap-4">
-            {relatedTools.map((relatedTool) => (
+            {relatedTools.map((relatedTool, index) => (
               <Link
                 key={relatedTool.slug}
                 href={`/tools/${relatedTool.slug}`}
-                className="card hover:border-primary-300 transition-colors"
+                className="card hover:border-primary-300 transition-all duration-200 focus-visible-ring slide-up"
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   {relatedTool.title}
@@ -114,11 +119,12 @@ export default function ToolTemplate({
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">مقالات تساعدك</h2>
           <div className="space-y-3">
-            {relatedArticles.map((article) => (
+            {relatedArticles.map((article, index) => (
               <Link
                 key={article.slug}
                 href={`/articles/${tool.category}/${article.slug}`}
-                className="block p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                className="block p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <h3 className="text-lg font-semibold text-gray-900">
                   {article.title}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { playCorrectSound, playWrongSound, setSoundEnabled, isSoundEnabled } from "@/lib/sounds";
-import { speakNumber, setSpeechEnabled } from "@/lib/speech";
+import { speakNumber, speakOperation, setSpeechEnabled } from "@/lib/speech";
 
 interface MultiplicationTableProps {
   gradeLevel: "1-2" | "3-4" | "5-6" | "all";
@@ -62,8 +62,11 @@ export default function MultiplicationTable({
       setTimeout(async () => {
         await speakNumber(question.a);
         setTimeout(async () => {
-          await speakNumber(question.b);
-        }, 500);
+          await speakOperation("multiply");
+          setTimeout(async () => {
+            await speakNumber(question.b);
+          }, 300);
+        }, 300);
       }, 300);
     }
   };
@@ -112,8 +115,11 @@ export default function MultiplicationTable({
         setTimeout(async () => {
           await speakNumber(nextQuestion.a);
           setTimeout(async () => {
-            await speakNumber(nextQuestion.b);
-          }, 500);
+            await speakOperation("multiply");
+            setTimeout(async () => {
+              await speakNumber(nextQuestion.b);
+            }, 300);
+          }, 300);
         }, 300);
       }
     }, 2000);

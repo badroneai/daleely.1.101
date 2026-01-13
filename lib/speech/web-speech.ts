@@ -2,7 +2,7 @@
 // This is a temporary implementation using browser's built-in TTS
 // Can be replaced later with audio files or external TTS API
 
-import type { SpeechProvider } from "../speech";
+import type { SpeechProvider, MathOperation } from "../speech";
 
 // Arabic number names
 const arabicNumbers: { [key: number]: string } = {
@@ -35,6 +35,14 @@ const arabicNumbers: { [key: number]: string } = {
   80: "ثمانون",
   90: "تسعون",
   100: "مئة",
+  200: "مئتان",
+  300: "ثلاثمئة",
+  400: "أربعمئة",
+  500: "خمسمئة",
+  600: "ستمئة",
+  700: "سبعمئة",
+  800: "ثمانمئة",
+  900: "تسعمئة",
 };
 
 // Arabic letter names mapping
@@ -134,7 +142,25 @@ export class WebSpeechProvider implements SpeechProvider {
   }
 
   private numberToArabic(number: number): string {
-    if (number < 0 || number > 100) {
+    // Support numbers up to 999
+    if (number < 0) {
+      return number.toString();
+    }
+    
+    if (number > 100 && number < 1000) {
+      const hundreds = Math.floor(number / 100);
+      const remainder = number % 100;
+      
+      if (remainder === 0) {
+        return `${arabicNumbers[hundreds * 100] || `${arabicNumbers[hundreds]} مئة`}`;
+      }
+      
+      const hundredsName = arabicNumbers[hundreds * 100] || `${arabicNumbers[hundreds]} مئة`;
+      const remainderName = this.numberToArabic(remainder);
+      return `${hundredsName} و ${remainderName}`;
+    }
+    
+    if (number > 100) {
       return number.toString();
     }
 
@@ -177,6 +203,17 @@ export class WebSpeechProvider implements SpeechProvider {
 
   async speakText(text: string): Promise<void> {
     await this.speak(text);
+  }
+
+  async speakOperation(operation: MathOperation): Promise<void> {
+    const operationNames: { [key in MathOperation]: string } = {
+      add: "زائد",
+      subtract: "ناقص",
+      multiply: "ضرب",
+      divide: "قسمة",
+    };
+    const arabicText = operationNames[operation] || operation;
+    await this.speak(arabicText);
   }
 
   isAvailable(): boolean {

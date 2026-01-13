@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { playCorrectSound, playWrongSound, playCompleteSound } from "@/lib/sounds";
-import { speakNumber, setSpeechEnabled } from "@/lib/speech";
+import { speakNumber, speakOperation, setSpeechEnabled } from "@/lib/speech";
 
 interface MultiplicationQuizProps {
   gradeLevel: "1-2" | "3-4" | "5-6" | "all";
@@ -77,8 +77,11 @@ export default function MultiplicationQuiz({
         const firstQuestion = newQuestions[0];
         await speakNumber(firstQuestion.a);
         setTimeout(async () => {
-          await speakNumber(firstQuestion.b);
-        }, 500);
+          await speakOperation("multiply");
+          setTimeout(async () => {
+            await speakNumber(firstQuestion.b);
+          }, 300);
+        }, 300);
       }, 300);
     }
   };
@@ -135,8 +138,11 @@ export default function MultiplicationQuiz({
             const nextQuestion = questions[currentIndex + 1];
             await speakNumber(nextQuestion.a);
             setTimeout(async () => {
-              await speakNumber(nextQuestion.b);
-            }, 500);
+              await speakOperation("multiply");
+              setTimeout(async () => {
+                await speakNumber(nextQuestion.b);
+              }, 300);
+            }, 300);
           }, 300);
         }
       }, 2000);
@@ -247,8 +253,11 @@ export default function MultiplicationQuiz({
               if (soundEnabled) {
                 await speakNumber(currentQuestion.a);
                 setTimeout(async () => {
-                  await speakNumber(currentQuestion.b);
-                }, 500);
+                  await speakOperation("multiply");
+                  setTimeout(async () => {
+                    await speakNumber(currentQuestion.b);
+                  }, 300);
+                }, 300);
               }
             }}
             className="mb-8"

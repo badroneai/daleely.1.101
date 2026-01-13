@@ -4,9 +4,9 @@ import Link from "next/link";
 
 export default function ParentsResourceLibrary() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 fade-in">
       {/* خطة 14 يوم */}
-      <section className="bg-white rounded-xl shadow-lg p-6">
+      <section className="bg-white rounded-xl shadow-lg p-6 slide-up">
         <div className="flex items-center gap-3 mb-4">
           <div className="text-4xl">📅</div>
           <h2 className="text-2xl font-bold text-gray-900">خطة 14 يوم جاهزة</h2>
@@ -17,7 +17,7 @@ export default function ParentsResourceLibrary() {
         <div className="grid md:grid-cols-3 gap-4">
           <Link
             href="/parents/14-day-plan/multiplication"
-            className="bg-blue-50 rounded-lg p-6 border-r-4 border-blue-500 hover:shadow-md transition-shadow"
+            className="bg-blue-50 rounded-lg p-6 border-r-4 border-blue-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring scale-in"
           >
             <div className="text-4xl mb-3">🔢</div>
             <h3 className="font-semibold text-gray-900 mb-2">تثبيت جدول الضرب</h3>
@@ -30,7 +30,8 @@ export default function ParentsResourceLibrary() {
           </Link>
           <Link
             href="/parents/14-day-plan/arabic-reading"
-            className="bg-green-50 rounded-lg p-6 border-r-4 border-green-500 hover:shadow-md transition-shadow"
+            className="bg-green-50 rounded-lg p-6 border-r-4 border-green-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring scale-in"
+            style={{ animationDelay: "0.1s" }}
           >
             <div className="text-4xl mb-3">📚</div>
             <h3 className="font-semibold text-gray-900 mb-2">تحسين القراءة العربية</h3>
@@ -43,7 +44,8 @@ export default function ParentsResourceLibrary() {
           </Link>
           <Link
             href="/parents/14-day-plan/mental-math"
-            className="bg-purple-50 rounded-lg p-6 border-r-4 border-purple-500 hover:shadow-md transition-shadow"
+            className="bg-purple-50 rounded-lg p-6 border-r-4 border-purple-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring scale-in"
+            style={{ animationDelay: "0.2s" }}
           >
             <div className="text-4xl mb-3">🧮</div>
             <h3 className="font-semibold text-gray-900 mb-2">تقوية الحساب الذهني</h3>
@@ -125,35 +127,35 @@ export default function ParentsResourceLibrary() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link
             href="/parents/common-problems/child-gets-bored"
-            className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200 hover:border-primary-300 transition-colors"
+            className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200 hover:border-primary-300 transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring"
           >
             <h3 className="font-semibold text-gray-900 mb-1">طفلي يمل بسرعة</h3>
             <p className="text-sm text-gray-600">ماذا أفعل؟</p>
           </Link>
           <Link
             href="/parents/common-problems/refuses-letters"
-            className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200 hover:border-primary-300 transition-colors"
+            className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200 hover:border-primary-300 transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring"
           >
             <h3 className="font-semibold text-gray-900 mb-1">يرفض الحروف/الحركات</h3>
             <p className="text-sm text-gray-600">كيف أتعامل معه؟</p>
           </Link>
           <Link
             href="/parents/common-problems/forgets-multiplication"
-            className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200 hover:border-primary-300 transition-colors"
+            className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200 hover:border-primary-300 transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring"
           >
             <h3 className="font-semibold text-gray-900 mb-1">يحفظ ثم ينسى جدول الضرب</h3>
             <p className="text-sm text-gray-600">ما الحل؟</p>
           </Link>
           <Link
             href="/parents/common-problems/test-anxiety"
-            className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200 hover:border-primary-300 transition-colors"
+            className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200 hover:border-primary-300 transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring"
           >
             <h3 className="font-semibold text-gray-900 mb-1">يتوتر من الاختبار</h3>
             <p className="text-sm text-gray-600">كيف أساعده؟</p>
           </Link>
           <Link
             href="/parents/common-problems/understanding-vs-memorization"
-            className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200 hover:border-primary-300 transition-colors"
+            className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200 hover:border-primary-300 transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring"
           >
             <h3 className="font-semibold text-gray-900 mb-1">الفهم vs الحفظ</h3>
             <p className="text-sm text-gray-600">ما الفرق في البيت؟</p>

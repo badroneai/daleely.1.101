@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { playCorrectSound, playWrongSound } from "@/lib/sounds";
-import { speakNumber, speakText, setSpeechEnabled } from "@/lib/speech";
+import { speakNumber, speakOperation, setSpeechEnabled } from "@/lib/speech";
 
 interface MentalMathAddSubProps {
   gradeLevel: "1-2" | "3-4" | "5-6" | "all";
@@ -88,7 +88,7 @@ export default function MentalMathAddSub({
       setTimeout(async () => {
         await speakNumber(question.a);
         setTimeout(async () => {
-          await speakText(question.operation === "add" ? "زائد" : "ناقص");
+          await speakOperation(question.operation);
           setTimeout(async () => {
             await speakNumber(question.b);
           }, 300);
@@ -143,7 +143,7 @@ export default function MentalMathAddSub({
         setTimeout(async () => {
           await speakNumber(nextQuestion.a);
           setTimeout(async () => {
-            await speakText(nextQuestion.operation === "add" ? "زائد" : "ناقص");
+            await speakOperation(nextQuestion.operation);
             setTimeout(async () => {
               await speakNumber(nextQuestion.b);
             }, 300);
