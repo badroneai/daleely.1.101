@@ -3,10 +3,15 @@
 import { useState, useEffect } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { playCorrectSound, playWrongSound } from "@/lib/sounds";
-import { speakText, speakNumber, setSpeechEnabled } from "@/lib/speech";
+import { speakText, speakNumber, setSpeechEnabled, isSpeechEnabled } from "@/lib/speech";
+import { speakTextWithAudio } from "@/lib/audio/audio-player";
+import SpeechToggleButton from "@/components/audio/SpeechToggleButton";
+import SpeakableText from "@/components/audio/SpeakableText";
+import { getToolScope } from "@/lib/CURRICULUM_MATRIX";
+import type { GradeLevel } from "@/lib/types";
 
 interface TellingTimeProps {
-  gradeLevel: "1-2" | "3-4" | "5-6" | "all";
+  grade: GradeLevel | "all";
   soundEnabled: boolean;
   mode: "quick" | "full";
 }
@@ -14,10 +19,12 @@ interface TellingTimeProps {
 type TimeFormat = "arabic" | "english" | "both";
 
 export default function TellingTime({
-  gradeLevel,
+  grade,
   soundEnabled,
   mode,
 }: TellingTimeProps) {
+  // Get scope from CURRICULUM_MATRIX
+  const scope = getToolScope("telling-time", grade);
   const [timeFormat, setTimeFormat] = useState<TimeFormat>("both");
   const [isTraining, setIsTraining] = useState(false);
   const [currentTime, setCurrentTime] = useState<{
@@ -30,6 +37,16 @@ export default function TellingTime({
   const [questionCount, setQuestionCount] = useState(0);
   const [showAnalog, setShowAnalog] = useState(true);
   const [showDigital, setShowDigital] = useState(false);
+  const [speechEnabled, setSpeechEnabledState] = useState(false);
+
+  // Sync with global speech enabled state
+  useEffect(() => {
+    setSpeechEnabledState(isSpeechEnabled());
+    const interval = setInterval(() => {
+      setSpeechEnabledState(isSpeechEnabled());
+    }, 200);
+    return () => clearInterval(interval);
+  }, []);
 
   const generateRandomTime = () => {
     const hours = Math.floor(Math.random() * 12) + 1;
@@ -153,7 +170,6 @@ export default function TellingTime({
     setIsTraining(true);
     setScore({ correct: 0, total: 0 });
     setQuestionCount(0);
-    setSpeechEnabled(soundEnabled);
     const time = generateRandomTime();
     setCurrentTime(time);
     setUserAnswer("");
@@ -161,18 +177,18 @@ export default function TellingTime({
     trackEvent("start_training", { tool: "telling-time" });
     
     // Speak the time
-    if (soundEnabled) {
+    if (speechEnabled) {
       setTimeout(async () => {
         if (timeFormat === "arabic" || timeFormat === "both") {
           const arabicTime = formatTimeArabic(time.hours, time.minutes);
-          await speakText(arabicTime);
+          await speakTextWithAudio(arabicTime);
         }
         if (timeFormat === "english" || timeFormat === "both") {
           if (timeFormat === "both") {
             await new Promise(resolve => setTimeout(resolve, 500));
           }
           const englishTime = formatTimeEnglish(time.hours, time.minutes);
-          await speakText(englishTime);
+          await speakTextWithAudio(englishTime);
         }
       }, 300);
     }
@@ -224,26 +240,26 @@ export default function TellingTime({
     if (isCorrect) {
       trackEvent("answer_correct", { tool: "telling-time" });
       setFeedback("correct");
-      if (soundEnabled) {
+      if (speechEnabled) {
         playCorrectSound();
       }
     } else {
       trackEvent("answer_wrong", { tool: "telling-time" });
       setFeedback("wrong");
-      if (soundEnabled) {
+      if (speechEnabled) {
         playWrongSound();
         // Speak the correct answer
         setTimeout(async () => {
           if (timeFormat === "arabic" || timeFormat === "both") {
             const arabicTime = formatTimeArabic(currentTime.hours, currentTime.minutes);
-            await speakText(arabicTime);
+            await speakTextWithAudio(arabicTime);
           }
           if (timeFormat === "english" || timeFormat === "both") {
             if (timeFormat === "both") {
               await new Promise(resolve => setTimeout(resolve, 500));
             }
             const englishTime = formatTimeEnglish(currentTime.hours, currentTime.minutes);
-            await speakText(englishTime);
+            await speakTextWithAudio(englishTime);
           }
         }, 500);
       }
@@ -256,18 +272,18 @@ export default function TellingTime({
       setFeedback(null);
       
       // Speak the next time
-      if (soundEnabled) {
+      if (speechEnabled) {
         setTimeout(async () => {
           if (timeFormat === "arabic" || timeFormat === "both") {
             const arabicTime = formatTimeArabic(nextTime.hours, nextTime.minutes);
-            await speakText(arabicTime);
+            await speakTextWithAudio(arabicTime);
           }
           if (timeFormat === "english" || timeFormat === "both") {
             if (timeFormat === "both") {
               await new Promise(resolve => setTimeout(resolve, 500));
             }
             const englishTime = formatTimeEnglish(nextTime.hours, nextTime.minutes);
-            await speakText(englishTime);
+            await speakTextWithAudio(englishTime);
           }
         }, 300);
       }
@@ -316,10 +332,23 @@ export default function TellingTime({
   if (!isTraining) {
     return (
       <div className="space-y-6">
+        <SpeechToggleButton position="top-right" showLabel={true} />
         <div className="text-center">
-          <h3 className="text-2xl font-bold text-gray-900 mb-4">قراءة الساعة</h3>
+          <h3 className="text-2xl font-bold text-gray-900 mb-4">
+            <SpeakableText
+              text="قراءة الساعة"
+              showButton={false}
+              clickable={true}
+              className="block"
+            />
+          </h3>
           <p className="text-gray-600 mb-6">
-            تعلم قراءة الساعة بالعربية والإنجليزية
+            <SpeakableText
+              text="تعلم قراءة الساعة بالعربية والإنجليزية"
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="block"
+            />
           </p>
         </div>
 
@@ -331,7 +360,12 @@ export default function TellingTime({
             }}
             className="btn-primary text-lg px-8 py-4"
           >
-            🕐 عربي فقط
+            🕐 <SpeakableText
+              text="عربي فقط"
+              showButton={false}
+              clickable={true}
+              className="inline"
+            />
           </button>
           <button
             onClick={() => {
@@ -340,7 +374,12 @@ export default function TellingTime({
             }}
             className="btn-primary text-lg px-8 py-4"
           >
-            🕐 إنجليزي فقط
+            🕐 <SpeakableText
+              text="إنجليزي فقط"
+              showButton={false}
+              clickable={true}
+              className="inline"
+            />
           </button>
           <button
             onClick={() => {
@@ -349,13 +388,23 @@ export default function TellingTime({
             }}
             className="btn-primary text-lg px-8 py-4"
           >
-            🕐 الاثنان معاً
+            🕐 <SpeakableText
+              text="الاثنان معاً"
+              showButton={false}
+              clickable={true}
+              className="inline"
+            />
           </button>
         </div>
 
         <div className="bg-primary-50 border-r-4 border-primary-500 p-4 rounded-lg">
           <p className="text-primary-900 font-medium">
-            💡 نصيحة: ابدأ بالعربي، ثم انتقل للإنجليزي عندما تشعر بالثقة
+            💡 <SpeakableText
+              text="نصيحة: ابدأ بالعربي، ثم انتقل للإنجليزي عندما تشعر بالثقة"
+              showButton={false}
+              clickable={true}
+              className="inline"
+            />
           </p>
         </div>
       </div>
@@ -373,10 +422,16 @@ export default function TellingTime({
 
   return (
     <div className="space-y-6">
+      <SpeechToggleButton position="top-right" showLabel={true} />
       {/* Score */}
       <div className="bg-gray-100 rounded-lg p-4 text-center">
         <p className="text-lg text-gray-700">
-          النتيجة: {score.correct} / {score.total} | السؤال: {questionCount + 1}
+          <SpeakableText
+            text={`النتيجة: ${score.correct} / ${score.total} | السؤال: ${questionCount + 1}`}
+            showButton={false}
+            clickable={true}
+            className="block"
+          />
         </p>
       </div>
 
@@ -393,24 +448,28 @@ export default function TellingTime({
               </p>
               <button
                 onClick={async () => {
-                  if (soundEnabled && currentTime) {
-                    setSpeechEnabled(true);
+                  if (speechEnabled && currentTime) {
                     if (timeFormat === "arabic" || timeFormat === "both") {
                       const arabicTime = formatTimeArabic(currentTime.hours, currentTime.minutes);
-                      await speakText(arabicTime);
+                      await speakTextWithAudio(arabicTime);
                     }
                     if (timeFormat === "english" || timeFormat === "both") {
                       if (timeFormat === "both") {
                         await new Promise(resolve => setTimeout(resolve, 500));
                       }
                       const englishTime = formatTimeEnglish(currentTime.hours, currentTime.minutes);
-                      await speakText(englishTime);
+                      await speakTextWithAudio(englishTime);
                     }
                   }
                 }}
                 className="btn-primary text-sm px-6 py-3"
               >
-                🔊 استمع للوقت
+                🔊 <SpeakableText
+                  text="استمع للوقت"
+                  showButton={false}
+                  clickable={true}
+                  className="inline"
+                />
               </button>
             </div>
           </div>
@@ -515,17 +574,41 @@ export default function TellingTime({
       {/* Question and Answer */}
       <div className="text-center bg-white rounded-xl shadow-lg p-8">
         <p className="text-2xl font-bold text-gray-900 mb-6">
-          ما هو الوقت على الساعة؟
+          <SpeakableText
+            text="ما هو الوقت على الساعة؟"
+            showButton={speechEnabled}
+            buttonPosition="inline"
+            className="block"
+          />
         </p>
         {timeFormat === "arabic" && (
-          <p className="text-xl text-gray-600 mb-4">اكتب الوقت بالعربية</p>
+          <p className="text-xl text-gray-600 mb-4">
+            <SpeakableText
+              text="اكتب الوقت بالعربية"
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="block"
+            />
+          </p>
         )}
         {timeFormat === "english" && (
-          <p className="text-xl text-gray-600 mb-4">اكتب الوقت بالإنجليزية</p>
+          <p className="text-xl text-gray-600 mb-4">
+            <SpeakableText
+              text="اكتب الوقت بالإنجليزية"
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="block"
+            />
+          </p>
         )}
         {timeFormat === "both" && (
           <p className="text-xl text-gray-600 mb-4">
-            اكتب الوقت بالعربية أو الإنجليزية
+            <SpeakableText
+              text="اكتب الوقت بالعربية أو الإنجليزية"
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="block"
+            />
           </p>
         )}
 
@@ -540,18 +623,42 @@ export default function TellingTime({
             autoFocus
           />
           <button onClick={handleAnswer} className="btn-primary text-lg px-8 py-4">
-            تحقق
+            <SpeakableText
+              text="تحقق"
+              showButton={false}
+              clickable={true}
+              className="inline"
+            />
           </button>
         </div>
 
         {feedback === "correct" && (
-          <p className="text-green-600 text-xl font-bold mt-4">✓ صحيح! أحسنت</p>
+          <p className="text-green-600 text-xl font-bold mt-4">
+            <SpeakableText
+              text="✓ صحيح! أحسنت"
+              showButton={false}
+              clickable={true}
+              className="block"
+            />
+          </p>
         )}
         {feedback === "wrong" && (
           <div className="mt-4">
-            <p className="text-red-600 text-xl font-bold mb-2">✗ خطأ</p>
+            <p className="text-red-600 text-xl font-bold mb-2">
+              <SpeakableText
+                text="✗ خطأ"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
+            </p>
             <p className="text-gray-700">
-              الإجابة الصحيحة: {correctAnswerArabic} أو {correctAnswerEnglish}
+              <SpeakableText
+                text={`الإجابة الصحيحة: ${correctAnswerArabic} أو ${correctAnswerEnglish}`}
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
             </p>
           </div>
         )}
@@ -563,20 +670,35 @@ export default function TellingTime({
           onClick={() => setShowAnalog(!showAnalog)}
           className="btn-secondary text-sm"
         >
-          {showAnalog ? "إخفاء الساعة العادية" : "إظهار الساعة العادية"}
+          <SpeakableText
+            text={showAnalog ? "إخفاء الساعة العادية" : "إظهار الساعة العادية"}
+            showButton={false}
+            clickable={true}
+            className="inline"
+          />
         </button>
         <button
           onClick={() => setShowDigital(!showDigital)}
           className="btn-secondary text-sm"
         >
-          {showDigital ? "إخفاء الساعة الرقمية" : "إظهار الساعة الرقمية"}
+          <SpeakableText
+            text={showDigital ? "إخفاء الساعة الرقمية" : "إظهار الساعة الرقمية"}
+            showButton={false}
+            clickable={true}
+            className="inline"
+          />
         </button>
       </div>
 
       {/* Action buttons */}
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
         <button onClick={resetTraining} className="btn-secondary">
-          إنهاء التدريب
+          <SpeakableText
+            text="إنهاء التدريب"
+            showButton={false}
+            clickable={true}
+            className="inline"
+          />
         </button>
       </div>
     </div>

@@ -4,6 +4,7 @@ import SyllablesBlendingClient from "@/components/tools/SyllablesBlendingClient"
 import { getToolBySlug, getToolsByCategory } from "@/lib/tools";
 import { generateToolMetadata } from "@/lib/metadata";
 import type { Metadata } from "next";
+import type { GradeLevel } from "@/lib/types";
 
 const tool = getToolBySlug("syllables-blending")!;
 const relatedTools = getToolsByCategory("arabic")
@@ -55,7 +56,14 @@ const relatedArticles: Array<{ slug: string; title: string }> = [
   },
 ];
 
-export default function SyllablesBlendingPage() {
+interface PageProps {
+  searchParams: { grade?: string };
+}
+
+export default function SyllablesBlendingPage({ searchParams }: PageProps) {
+  // قراءة grade من query params، مع fallback إلى "all" إذا لم يكن موجوداً
+  const grade = (searchParams.grade as GradeLevel | undefined) || "all";
+
   return (
     <PageLayout
       breadcrumbs={[
@@ -71,7 +79,7 @@ export default function SyllablesBlendingPage() {
         relatedTools={relatedTools}
         relatedArticles={relatedArticles}
       >
-        <SyllablesBlendingClient />
+        <SyllablesBlendingClient grade={grade} />
       </ToolTemplate>
     </PageLayout>
   );

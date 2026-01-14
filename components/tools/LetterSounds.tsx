@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { playClickSound } from "@/lib/sounds";
-import { speakLetter, speakWord, setSpeechEnabled } from "@/lib/speech";
+import { speakLetter, speakWord, setSpeechEnabled, isSpeechEnabled } from "@/lib/speech";
+import { speakLetterWithAudio, speakTextWithAudio } from "@/lib/audio/audio-player";
+import AudioPlayer from "@/components/audio/AudioPlayer";
+import SpeakableText from "@/components/audio/SpeakableText";
+import SpeechToggleButton from "@/components/audio/SpeechToggleButton";
+import { getToolScope } from "@/lib/CURRICULUM_MATRIX";
+import type { GradeLevel } from "@/lib/types";
 
 interface LetterSoundsProps {
-  gradeLevel: "1-2" | "3-4" | "5-6" | "all";
+  grade: GradeLevel | "all";
   soundEnabled: boolean;
   mode: "quick" | "full";
 }
@@ -43,24 +49,35 @@ const letterSounds = [
 ];
 
 export default function LetterSounds({
-  gradeLevel,
+  grade,
   soundEnabled,
   mode,
 }: LetterSoundsProps) {
+  // Get scope from CURRICULUM_MATRIX
+  const scope = getToolScope("letter-sounds", grade);
   const [selectedLetter, setSelectedLetter] = useState<typeof letterSounds[0] | null>(null);
   const [isTraining, setIsTraining] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<typeof letterSounds[0] | null>(null);
   const [userAnswer, setUserAnswer] = useState<string>("");
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [speechEnabled, setSpeechEnabledState] = useState(false);
+
+  // Sync with global speech enabled state
+  useEffect(() => {
+    setSpeechEnabledState(isSpeechEnabled());
+    const interval = setInterval(() => {
+      setSpeechEnabledState(isSpeechEnabled());
+    }, 200);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLetterClick = async (letter: typeof letterSounds[0]) => {
     setSelectedLetter(letter);
-    setSpeechEnabled(soundEnabled);
-    if (soundEnabled) {
+    if (speechEnabled) {
       playClickSound();
-      // Speak the letter sound
-      await speakLetter(letter.letter, letter.sound);
+      // Use hybrid audio system
+      await speakLetterWithAudio(letter.letter, letter.sound);
     }
     trackEvent("tool_open", { tool: "letter-sounds", letter: letter.letter });
   };
@@ -68,16 +85,15 @@ export default function LetterSounds({
   const startTraining = () => {
     setIsTraining(true);
     setScore({ correct: 0, total: 0 });
-    setSpeechEnabled(soundEnabled);
     const question = generateQuestion();
     setUserAnswer("");
     setFeedback(null);
     trackEvent("start_training", { tool: "letter-sounds" });
     
-    // Speak the sound
-    if (soundEnabled && question) {
+    // Speak the sound using hybrid audio system
+    if (speechEnabled && question) {
       setTimeout(async () => {
-        await speakLetter(question.letter, question.sound);
+        await speakLetterWithAudio(question.letter, question.sound);
       }, 300);
     }
   };
@@ -101,19 +117,19 @@ export default function LetterSounds({
     if (isCorrect) {
       trackEvent("answer_correct", { tool: "letter-sounds" });
       setFeedback("correct");
-      // Speak the correct letter
-      if (soundEnabled) {
+      // Speak the correct letter using hybrid audio system
+      if (speechEnabled) {
         setTimeout(async () => {
-          await speakLetter(currentQuestion.letter, currentQuestion.sound);
+          await speakLetterWithAudio(currentQuestion.letter, currentQuestion.sound);
         }, 300);
       }
     } else {
       trackEvent("answer_wrong", { tool: "letter-sounds" });
       setFeedback("wrong");
-      // Speak the correct letter
-      if (soundEnabled) {
+      // Speak the correct letter using hybrid audio system
+      if (speechEnabled) {
         setTimeout(async () => {
-          await speakLetter(currentQuestion.letter, currentQuestion.sound);
+          await speakLetterWithAudio(currentQuestion.letter, currentQuestion.sound);
         }, 500);
       }
     }
@@ -123,10 +139,10 @@ export default function LetterSounds({
       setUserAnswer("");
       setFeedback(null);
       
-      // Speak the next question sound
-      if (soundEnabled && nextQuestion) {
+      // Speak the next question sound using hybrid audio system
+      if (speechEnabled && nextQuestion) {
         setTimeout(async () => {
-          await speakLetter(nextQuestion.letter, nextQuestion.sound);
+          await speakLetterWithAudio(nextQuestion.letter, nextQuestion.sound);
         }, 300);
       }
     }, 2000);
@@ -144,31 +160,46 @@ export default function LetterSounds({
   if (isTraining) {
     return (
       <div className="space-y-6">
+        <SpeechToggleButton position="top-right" showLabel={true} />
         <div className="bg-gray-100 rounded-lg p-4 text-center">
           <p className="text-lg text-gray-700">
-            النتيجة: {score.correct} / {score.total}
+            <SpeakableText
+              text={`النتيجة: ${score.correct} / ${score.total}`}
+              showButton={false}
+              clickable={true}
+              className="block"
+            />
           </p>
         </div>
 
         <div className="text-center bg-white rounded-xl shadow-lg p-8">
-          <p className="text-2xl text-gray-600 mb-4">
-            ما هو الحرف الذي يبدأ به صوت &quot;{currentQuestion?.sound}&quot;؟
-          </p>
+          <div className="mb-4">
+            <SpeakableText
+              text={`ما هو الحرف الذي يبدأ به صوت "${currentQuestion?.sound}"؟`}
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="text-2xl text-gray-600"
+            />
+          </div>
           <div className="mb-6">
-            <p className="text-lg text-gray-700 mb-2">أمثلة:</p>
+            <p className="text-lg text-gray-700 mb-2">
+              <SpeakableText
+                text="أمثلة:"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
+            </p>
             <div className="flex gap-4 justify-center flex-wrap">
               {currentQuestion?.examples.map((example, idx) => (
-                <button
-                  key={idx}
-                  onClick={async () => {
-                    if (soundEnabled) {
-                      await speakWord(example);
-                    }
-                  }}
-                  className="text-2xl font-bold text-primary-600 hover:text-primary-700 transition-colors px-3 py-2 rounded-lg hover:bg-primary-50"
-                >
-                  {example}
-                </button>
+                <div key={idx} className="flex items-center gap-2">
+                  <SpeakableText
+                    text={example}
+                    showButton={speechEnabled}
+                    buttonPosition="inline"
+                    className="text-2xl font-bold text-primary-600 hover:text-primary-700 transition-colors px-3 py-2 rounded-lg hover:bg-primary-50"
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -183,22 +214,44 @@ export default function LetterSounds({
               autoFocus
             />
             <button onClick={handleAnswer} className="btn-primary text-lg px-8 py-4">
-              تحقق
+              <SpeakableText
+                text="تحقق"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
           </div>
           {feedback === "correct" && (
-            <p className="text-green-600 text-xl font-bold mt-4">✓ صحيح! أحسنت</p>
+            <p className="text-green-600 text-xl font-bold mt-4">
+              <SpeakableText
+                text="✓ صحيح! أحسنت"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
+            </p>
           )}
           {feedback === "wrong" && (
             <p className="text-red-600 text-xl font-bold mt-4">
-              ✗ خطأ. الإجابة الصحيحة: {currentQuestion?.letter}
+              <SpeakableText
+                text={`✗ خطأ. الإجابة الصحيحة: ${currentQuestion?.letter}`}
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
             </p>
           )}
         </div>
 
         <div className="flex justify-center">
           <button onClick={resetTraining} className="btn-secondary">
-            إنهاء التدريب
+            <SpeakableText
+              text="إنهاء التدريب"
+              showButton={false}
+              clickable={true}
+              className="inline"
+            />
           </button>
         </div>
       </div>
@@ -208,40 +261,62 @@ export default function LetterSounds({
   // Browse mode
   return (
     <div className="space-y-6">
+      <SpeechToggleButton position="top-right" showLabel={true} />
       {selectedLetter ? (
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-6">
             <p className="text-8xl font-bold text-primary-600 mb-4">
-              {selectedLetter.letter}
+              <SpeakableText
+                text={selectedLetter.letter}
+                showButton={false}
+                clickable={true}
+                className="block cursor-pointer hover:text-primary-700 transition-colors"
+              />
             </p>
-            <p className="text-3xl font-bold text-gray-900 mb-2">
-              صوت الحرف: {selectedLetter.sound}
-            </p>
+            <SpeakableText
+              text={`صوت الحرف: ${selectedLetter.sound}`}
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="text-3xl font-bold text-gray-900 mb-2"
+            />
           </div>
 
           <div className="mb-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">أمثلة على الكلمات:</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              <SpeakableText
+                text="أمثلة على الكلمات:"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {selectedLetter.examples.map((example, idx) => (
-                <button
+                <div
                   key={idx}
-                  onClick={async () => {
-                    if (soundEnabled) {
-                      await speakWord(example);
-                    }
-                  }}
-                  className="p-4 bg-gray-50 rounded-lg text-center hover:bg-primary-50 transition-colors"
+                  className="p-4 bg-gray-50 rounded-lg text-center hover:bg-primary-50 transition-colors flex items-center justify-center gap-2"
                 >
-                  <p className="text-3xl font-bold text-primary-600">{example}</p>
-                </button>
+                  <SpeakableText
+                    text={example}
+                    showButton={speechEnabled}
+                    buttonPosition="inline"
+                    className="text-3xl font-bold text-primary-600"
+                  />
+                </div>
               ))}
             </div>
           </div>
 
           <div className="bg-primary-50 border-r-4 border-primary-500 p-4 rounded-lg mb-6">
-            <p className="text-primary-900 font-medium">
-              💡 نصيحة: استمع للصوت وكرره عدة مرات. حاول نطق الكلمات الأمثلة بصوت عالٍ.
-            </p>
+            <span className="text-primary-900 font-medium">
+              <span>💡 </span>
+              <SpeakableText
+                text="نصيحة: استمع للصوت وكرره عدة مرات. حاول نطق الكلمات الأمثلة بصوت عالٍ."
+                showButton={speechEnabled}
+                buttonPosition="inline"
+                className="inline"
+              />
+            </span>
           </div>
 
           <div className="flex gap-4 justify-center">
@@ -249,10 +324,20 @@ export default function LetterSounds({
               onClick={() => setSelectedLetter(null)}
               className="btn-secondary"
             >
-              العودة للحروف
+              <SpeakableText
+                text="العودة للحروف"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
             <button onClick={startTraining} className="btn-primary">
-              ابدأ التدريب
+              <SpeakableText
+                text="ابدأ التدريب"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
           </div>
         </div>
@@ -260,13 +345,26 @@ export default function LetterSounds({
         <>
           <div className="text-center mb-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              أصوات الحروف العربية
+              <SpeakableText
+                text="أصوات الحروف العربية"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
             </h3>
-            <p className="text-gray-600 mb-4">
-              اضغط على أي حرف لتعرف صوته وأمثلة عليه
-            </p>
+            <SpeakableText
+              text="اضغط على أي حرف لتعرف صوته وأمثلة عليه"
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="text-gray-600 mb-4 block"
+            />
             <button onClick={startTraining} className="btn-primary">
-              ابدأ التدريب
+              <SpeakableText
+                text="ابدأ التدريب"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
           </div>
 

@@ -4,6 +4,7 @@ import MentalMathAddSubClient from "@/components/tools/MentalMathAddSubClient";
 import { getToolBySlug, getToolsByCategory } from "@/lib/tools";
 import { generateToolMetadata } from "@/lib/metadata";
 import type { Metadata } from "next";
+import type { GradeLevel } from "@/lib/types";
 
 const tool = getToolBySlug("mental-math-add-sub")!;
 const relatedTools = getToolsByCategory("math")
@@ -56,7 +57,14 @@ const relatedArticles = [
   },
 ];
 
-export default function MentalMathAddSubPage() {
+interface PageProps {
+  searchParams: { grade?: string };
+}
+
+export default function MentalMathAddSubPage({ searchParams }: PageProps) {
+  // قراءة grade من query params، مع fallback إلى "all" إذا لم يكن موجوداً
+  const grade = (searchParams.grade as GradeLevel | undefined) || "all";
+
   return (
     <PageLayout
       breadcrumbs={[
@@ -72,7 +80,7 @@ export default function MentalMathAddSubPage() {
         relatedTools={relatedTools}
         relatedArticles={relatedArticles}
       >
-        <MentalMathAddSubClient />
+        <MentalMathAddSubClient grade={grade} />
       </ToolTemplate>
     </PageLayout>
   );

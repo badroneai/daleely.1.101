@@ -1,5 +1,6 @@
 import { Tool } from "@/lib/types";
 import Link from "next/link";
+import { getGradeLevelLabel } from "@/lib/tools";
 
 interface PillarTemplateProps {
   title: string;
@@ -7,9 +8,24 @@ interface PillarTemplateProps {
   category: "math" | "arabic" | "teachers" | "parents";
   topTools: Tool[];
   toolsByGrade: {
-    "1-2": Tool[];
-    "3-4": Tool[];
-    "5-6": Tool[];
+    kg?: {
+      kg1: Tool[];
+      kg2: Tool[];
+      kg3: Tool[];
+    };
+    elementary?: {
+      grade1: Tool[];
+      grade2: Tool[];
+      grade3: Tool[];
+      grade4: Tool[];
+      grade5: Tool[];
+      grade6: Tool[];
+    };
+    middle?: {
+      grade7: Tool[];
+      grade8: Tool[];
+      grade9: Tool[];
+    };
   };
   learningPath: Array<{ step: number; title: string; description: string; toolSlug?: string }>;
   articles?: Array<{ slug: string; title: string }>;
@@ -67,67 +83,252 @@ export default function PillarTemplate({
       )}
 
       {/* Tools by Grade Level */}
-      {(toolsByGrade["1-2"].length > 0 || toolsByGrade["3-4"].length > 0 || toolsByGrade["5-6"].length > 0) && (
+      {((toolsByGrade.kg && (toolsByGrade.kg.kg1.length > 0 || toolsByGrade.kg.kg2.length > 0 || toolsByGrade.kg.kg3.length > 0)) ||
+        (toolsByGrade.elementary && (toolsByGrade.elementary.grade1.length > 0 || toolsByGrade.elementary.grade2.length > 0 || toolsByGrade.elementary.grade3.length > 0 || toolsByGrade.elementary.grade4.length > 0 || toolsByGrade.elementary.grade5.length > 0 || toolsByGrade.elementary.grade6.length > 0)) ||
+        (toolsByGrade.middle && (toolsByGrade.middle.grade7.length > 0 || toolsByGrade.middle.grade8.length > 0 || toolsByGrade.middle.grade9.length > 0))) && (
         <div className="mb-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">الأدوات حسب المرحلة الدراسية</h2>
           
-          <div className="space-y-8">
-            {/* Grades 1-2 */}
-            {toolsByGrade["1-2"].length > 0 && (
+          <div className="space-y-12">
+            {/* رياض الأطفال */}
+            {toolsByGrade.kg && (toolsByGrade.kg.kg1.length > 0 || toolsByGrade.kg.kg2.length > 0 || toolsByGrade.kg.kg3.length > 0) && (
               <div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">الصفوف 1-2</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {toolsByGrade["1-2"].map((tool, index) => (
-                    <Link
-                      key={tool.slug}
-                      href={`/tools/${tool.slug}`}
-                      className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
-                      style={{ animationDelay: `${index * 0.05}s` }}
-                    >
-                      <h4 className="font-semibold text-gray-900 mb-1">{tool.title}</h4>
-                      <p className="text-sm text-gray-600">{tool.description}</p>
-                    </Link>
-                  ))}
+                <h3 className="text-2xl font-bold text-gray-900 mb-6 border-b-2 border-primary-300 pb-2">رياض الأطفال</h3>
+                <div className="space-y-6">
+                  {toolsByGrade.kg.kg1.length > 0 && (
+                    <div>
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4">{getGradeLevelLabel("kg1")}</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {toolsByGrade.kg.kg1.map((tool, index) => (
+                          <Link
+                            key={tool.slug}
+                            href={`/tools/${tool.slug}`}
+                            className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <h5 className="font-semibold text-gray-900 mb-1">{tool.title}</h5>
+                            <p className="text-sm text-gray-600">{tool.description}</p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {toolsByGrade.kg.kg2.length > 0 && (
+                    <div>
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4">{getGradeLevelLabel("kg2")}</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {toolsByGrade.kg.kg2.map((tool, index) => (
+                          <Link
+                            key={tool.slug}
+                            href={`/tools/${tool.slug}`}
+                            className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <h5 className="font-semibold text-gray-900 mb-1">{tool.title}</h5>
+                            <p className="text-sm text-gray-600">{tool.description}</p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {toolsByGrade.kg.kg3.length > 0 && (
+                    <div>
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4">{getGradeLevelLabel("kg3")}</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {toolsByGrade.kg.kg3.map((tool, index) => (
+                          <Link
+                            key={tool.slug}
+                            href={`/tools/${tool.slug}`}
+                            className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <h5 className="font-semibold text-gray-900 mb-1">{tool.title}</h5>
+                            <p className="text-sm text-gray-600">{tool.description}</p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Grades 3-4 */}
-            {toolsByGrade["3-4"].length > 0 && (
+            {/* التعليم الابتدائي */}
+            {toolsByGrade.elementary && (toolsByGrade.elementary.grade1.length > 0 || toolsByGrade.elementary.grade2.length > 0 || toolsByGrade.elementary.grade3.length > 0 || toolsByGrade.elementary.grade4.length > 0 || toolsByGrade.elementary.grade5.length > 0 || toolsByGrade.elementary.grade6.length > 0) && (
               <div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">الصفوف 3-4</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {toolsByGrade["3-4"].map((tool, index) => (
-                    <Link
-                      key={tool.slug}
-                      href={`/tools/${tool.slug}`}
-                      className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
-                      style={{ animationDelay: `${index * 0.05}s` }}
-                    >
-                      <h4 className="font-semibold text-gray-900 mb-1">{tool.title}</h4>
-                      <p className="text-sm text-gray-600">{tool.description}</p>
-                    </Link>
-                  ))}
+                <h3 className="text-2xl font-bold text-gray-900 mb-6 border-b-2 border-primary-300 pb-2">التعليم الابتدائي</h3>
+                <div className="space-y-6">
+                  {toolsByGrade.elementary.grade1.length > 0 && (
+                    <div>
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4">{getGradeLevelLabel("grade1")}</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {toolsByGrade.elementary.grade1.map((tool, index) => (
+                          <Link
+                            key={tool.slug}
+                            href={`/tools/${tool.slug}`}
+                            className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <h5 className="font-semibold text-gray-900 mb-1">{tool.title}</h5>
+                            <p className="text-sm text-gray-600">{tool.description}</p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {toolsByGrade.elementary.grade2.length > 0 && (
+                    <div>
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4">{getGradeLevelLabel("grade2")}</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {toolsByGrade.elementary.grade2.map((tool, index) => (
+                          <Link
+                            key={tool.slug}
+                            href={`/tools/${tool.slug}`}
+                            className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <h5 className="font-semibold text-gray-900 mb-1">{tool.title}</h5>
+                            <p className="text-sm text-gray-600">{tool.description}</p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {toolsByGrade.elementary.grade3.length > 0 && (
+                    <div>
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4">{getGradeLevelLabel("grade3")}</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {toolsByGrade.elementary.grade3.map((tool, index) => (
+                          <Link
+                            key={tool.slug}
+                            href={`/tools/${tool.slug}`}
+                            className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <h5 className="font-semibold text-gray-900 mb-1">{tool.title}</h5>
+                            <p className="text-sm text-gray-600">{tool.description}</p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {toolsByGrade.elementary.grade4.length > 0 && (
+                    <div>
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4">{getGradeLevelLabel("grade4")}</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {toolsByGrade.elementary.grade4.map((tool, index) => (
+                          <Link
+                            key={tool.slug}
+                            href={`/tools/${tool.slug}`}
+                            className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <h5 className="font-semibold text-gray-900 mb-1">{tool.title}</h5>
+                            <p className="text-sm text-gray-600">{tool.description}</p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {toolsByGrade.elementary.grade5.length > 0 && (
+                    <div>
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4">{getGradeLevelLabel("grade5")}</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {toolsByGrade.elementary.grade5.map((tool, index) => (
+                          <Link
+                            key={tool.slug}
+                            href={`/tools/${tool.slug}`}
+                            className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <h5 className="font-semibold text-gray-900 mb-1">{tool.title}</h5>
+                            <p className="text-sm text-gray-600">{tool.description}</p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {toolsByGrade.elementary.grade6.length > 0 && (
+                    <div>
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4">{getGradeLevelLabel("grade6")}</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {toolsByGrade.elementary.grade6.map((tool, index) => (
+                          <Link
+                            key={tool.slug}
+                            href={`/tools/${tool.slug}`}
+                            className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <h5 className="font-semibold text-gray-900 mb-1">{tool.title}</h5>
+                            <p className="text-sm text-gray-600">{tool.description}</p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Grades 5-6 */}
-            {toolsByGrade["5-6"].length > 0 && (
+            {/* التعليم المتوسط */}
+            {toolsByGrade.middle && (toolsByGrade.middle.grade7.length > 0 || toolsByGrade.middle.grade8.length > 0 || toolsByGrade.middle.grade9.length > 0) && (
               <div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">الصفوف 5-6</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {toolsByGrade["5-6"].map((tool, index) => (
-                    <Link
-                      key={tool.slug}
-                      href={`/tools/${tool.slug}`}
-                      className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
-                      style={{ animationDelay: `${index * 0.05}s` }}
-                    >
-                      <h4 className="font-semibold text-gray-900 mb-1">{tool.title}</h4>
-                      <p className="text-sm text-gray-600">{tool.description}</p>
-                    </Link>
-                  ))}
+                <h3 className="text-2xl font-bold text-gray-900 mb-6 border-b-2 border-primary-300 pb-2">التعليم المتوسط</h3>
+                <div className="space-y-6">
+                  {toolsByGrade.middle.grade7.length > 0 && (
+                    <div>
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4">{getGradeLevelLabel("grade7")}</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {toolsByGrade.middle.grade7.map((tool, index) => (
+                          <Link
+                            key={tool.slug}
+                            href={`/tools/${tool.slug}`}
+                            className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <h5 className="font-semibold text-gray-900 mb-1">{tool.title}</h5>
+                            <p className="text-sm text-gray-600">{tool.description}</p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {toolsByGrade.middle.grade8.length > 0 && (
+                    <div>
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4">{getGradeLevelLabel("grade8")}</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {toolsByGrade.middle.grade8.map((tool, index) => (
+                          <Link
+                            key={tool.slug}
+                            href={`/tools/${tool.slug}`}
+                            className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <h5 className="font-semibold text-gray-900 mb-1">{tool.title}</h5>
+                            <p className="text-sm text-gray-600">{tool.description}</p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {toolsByGrade.middle.grade9.length > 0 && (
+                    <div>
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4">{getGradeLevelLabel("grade9")}</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {toolsByGrade.middle.grade9.map((tool, index) => (
+                          <Link
+                            key={tool.slug}
+                            href={`/tools/${tool.slug}`}
+                            className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <h5 className="font-semibold text-gray-900 mb-1">{tool.title}</h5>
+                            <p className="text-sm text-gray-600">{tool.description}</p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

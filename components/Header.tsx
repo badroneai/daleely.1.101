@@ -13,6 +13,12 @@ export default function Header() {
           </Link>
           <div className="flex flex-wrap gap-3 md:gap-4">
             <Link 
+              href="/student" 
+              className="text-gray-700 hover:text-primary-600 font-medium transition-all duration-200 px-2 py-2 min-h-[44px] flex items-center rounded-md hover:bg-primary-50 focus-visible-ring"
+            >
+              الطالب
+            </Link>
+            <Link 
               href="/tools" 
               className="text-gray-700 hover:text-primary-600 font-medium transition-all duration-200 px-2 py-2 min-h-[44px] flex items-center rounded-md hover:bg-primary-50 focus-visible-ring"
             >

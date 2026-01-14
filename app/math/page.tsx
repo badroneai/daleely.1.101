@@ -1,6 +1,6 @@
 import PageLayout from "@/components/PageLayout";
 import PillarTemplate from "@/components/templates/PillarTemplate";
-import { getToolsByCategory, getToolsByGradeLevel } from "@/lib/tools";
+import { getToolsByCategory, getToolsByGradeLevel, getToolsByStage } from "@/lib/tools";
 import { generatePillarMetadata } from "@/lib/metadata";
 import type { Metadata } from "next";
 
@@ -13,10 +13,26 @@ export const metadata: Metadata = generatePillarMetadata(
 const mathTools = getToolsByCategory("math");
 const topTools = mathTools.slice(0, 3);
 
+// تجميع الأدوات حسب كل صف منفصلاً
 const toolsByGrade = {
-  "1-2": getToolsByGradeLevel("1-2").filter((t) => t.category === "math"),
-  "3-4": getToolsByGradeLevel("3-4").filter((t) => t.category === "math"),
-  "5-6": getToolsByGradeLevel("5-6").filter((t) => t.category === "math"),
+  kg: {
+    kg1: getToolsByGradeLevel("kg1").filter((t) => t.category === "math"),
+    kg2: getToolsByGradeLevel("kg2").filter((t) => t.category === "math"),
+    kg3: getToolsByGradeLevel("kg3").filter((t) => t.category === "math"),
+  },
+  elementary: {
+    grade1: getToolsByGradeLevel("grade1").filter((t) => t.category === "math"),
+    grade2: getToolsByGradeLevel("grade2").filter((t) => t.category === "math"),
+    grade3: getToolsByGradeLevel("grade3").filter((t) => t.category === "math"),
+    grade4: getToolsByGradeLevel("grade4").filter((t) => t.category === "math"),
+    grade5: getToolsByGradeLevel("grade5").filter((t) => t.category === "math"),
+    grade6: getToolsByGradeLevel("grade6").filter((t) => t.category === "math"),
+  },
+  middle: {
+    grade7: getToolsByGradeLevel("grade7").filter((t) => t.category === "math"),
+    grade8: getToolsByGradeLevel("grade8").filter((t) => t.category === "math"),
+    grade9: getToolsByGradeLevel("grade9").filter((t) => t.category === "math"),
+  },
 };
 
 const learningPath = [

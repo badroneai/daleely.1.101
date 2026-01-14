@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { playClickSound, playCorrectSound, playWrongSound } from "@/lib/sounds";
-import { speakWord, setSpeechEnabled } from "@/lib/speech";
+import { speakWord, setSpeechEnabled, isSpeechEnabled } from "@/lib/speech";
+import { speakTextWithAudio } from "@/lib/audio/audio-player";
+import AudioPlayer from "@/components/audio/AudioPlayer";
+import SpeakableText from "@/components/audio/SpeakableText";
+import QuestionWithAudio from "@/components/audio/QuestionWithAudio";
+import SpeechToggleButton from "@/components/audio/SpeechToggleButton";
+import { getToolScope } from "@/lib/CURRICULUM_MATRIX";
+import type { GradeLevel } from "@/lib/types";
 
 interface SightWordsArProps {
-  gradeLevel: "1-2" | "3-4" | "5-6" | "all";
+  grade: GradeLevel | "all";
   soundEnabled: boolean;
   mode: "quick" | "full";
 }
@@ -137,10 +144,12 @@ const sightWords = [
 type SightWordType = typeof sightWords[0];
 
 export default function SightWordsAr({
-  gradeLevel,
+  grade,
   soundEnabled,
   mode,
 }: SightWordsArProps) {
+  // Get scope from CURRICULUM_MATRIX
+  const scope = getToolScope("sight-words-ar", grade);
   const [selectedWord, setSelectedWord] = useState<SightWordType | null>(null);
   const [isTraining, setIsTraining] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<{
@@ -151,14 +160,23 @@ export default function SightWordsAr({
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [showMeaning, setShowMeaning] = useState(false);
+  const [speechEnabled, setSpeechEnabledState] = useState(false);
+
+  // Sync with global speech enabled state
+  useEffect(() => {
+    setSpeechEnabledState(isSpeechEnabled());
+    const interval = setInterval(() => {
+      setSpeechEnabledState(isSpeechEnabled());
+    }, 200);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleWordClick = async (word: SightWordType) => {
     setSelectedWord(word);
-    setSpeechEnabled(soundEnabled);
-    if (soundEnabled) {
+    if (speechEnabled) {
       playClickSound();
       // Speak the word
-      await speakWord(word.word);
+      await speakTextWithAudio(word.word);
     }
     trackEvent("tool_open", { tool: "sight-words-ar", word: word.word });
   };
@@ -166,7 +184,6 @@ export default function SightWordsAr({
   const startTraining = () => {
     setIsTraining(true);
     setScore({ correct: 0, total: 0 });
-    setSpeechEnabled(soundEnabled);
     const question = generateQuestion();
     setSelectedAnswer(null);
     setFeedback(null);
@@ -174,9 +191,9 @@ export default function SightWordsAr({
     trackEvent("start_training", { tool: "sight-words-ar" });
     
     // Speak the question word
-    if (soundEnabled && question) {
+    if (speechEnabled && question) {
       setTimeout(async () => {
-        await speakWord(question.word.word);
+        await speakTextWithAudio(question.word.word);
       }, 300);
     }
   };
@@ -216,21 +233,21 @@ export default function SightWordsAr({
     if (isCorrect) {
       trackEvent("answer_correct", { tool: "sight-words-ar" });
       setFeedback("correct");
-      if (soundEnabled) {
+      if (speechEnabled) {
         playCorrectSound();
         // Speak the correct word
         setTimeout(async () => {
-          await speakWord(currentQuestion.word.word);
+          await speakTextWithAudio(currentQuestion.word.word);
         }, 300);
       }
     } else {
       trackEvent("answer_wrong", { tool: "sight-words-ar" });
       setFeedback("wrong");
-      if (soundEnabled) {
+      if (speechEnabled) {
         playWrongSound();
         // Speak the correct word
         setTimeout(async () => {
-          await speakWord(currentQuestion.word.word);
+          await speakTextWithAudio(currentQuestion.word.word);
         }, 500);
       }
     }
@@ -244,9 +261,9 @@ export default function SightWordsAr({
       setShowMeaning(false);
       
       // Speak the next question word
-      if (soundEnabled && nextQuestion) {
+      if (speechEnabled && nextQuestion) {
         setTimeout(async () => {
-          await speakWord(nextQuestion.word.word);
+          await speakTextWithAudio(nextQuestion.word.word);
         }, 300);
       }
     }, 2500);
@@ -265,23 +282,46 @@ export default function SightWordsAr({
   if (isTraining) {
     return (
       <div className="space-y-6">
+        <SpeechToggleButton position="top-right" showLabel={true} />
         <div className="bg-gray-100 rounded-lg p-4 text-center">
           <p className="text-lg text-gray-700">
-            النتيجة: {score.correct} / {score.total}
+            <SpeakableText
+              text={`النتيجة: ${score.correct} / ${score.total}`}
+              showButton={false}
+              clickable={true}
+              className="block"
+            />
           </p>
         </div>
 
         {currentQuestion && (
           <div className="text-center bg-white rounded-xl shadow-lg p-8">
-            <p className="text-2xl text-gray-700 mb-6">
-              ما معنى هذه الكلمة؟
-            </p>
-            <p className="text-6xl font-bold text-primary-600 mb-8">
-              {currentQuestion.word.word}
-            </p>
+            <div className="mb-6">
+              <QuestionWithAudio
+                question="ما معنى هذه الكلمة؟"
+                autoSpeak={false}
+                showAudioButton={speechEnabled}
+                className="text-2xl text-gray-700"
+              />
+            </div>
+            <div className="flex items-center justify-center gap-4 mb-8">
+              <p className="text-6xl font-bold text-primary-600">
+                <SpeakableText
+                  text={currentQuestion.word.word}
+                  showButton={speechEnabled}
+                  buttonPosition="inline"
+                  className="block cursor-pointer hover:text-primary-700 transition-colors"
+                />
+              </p>
+            </div>
             {showMeaning && (
               <p className="text-xl text-gray-600 mb-4">
-                {currentQuestion.word.example}
+                <SpeakableText
+                  text={currentQuestion.word.example}
+                  showButton={false}
+                  clickable={true}
+                  className="block"
+                />
               </p>
             )}
 
@@ -309,9 +349,23 @@ export default function SightWordsAr({
                     disabled={showFeedback}
                     className={buttonClass}
                   >
-                    <p className="text-xl font-bold mb-1">{option.meaning}</p>
+                    <p className="text-xl font-bold mb-1">
+                      <SpeakableText
+                        text={option.meaning}
+                        showButton={false}
+                        clickable={true}
+                        className="block"
+                      />
+                    </p>
                     {showFeedback && isCorrect && (
-                      <p className="text-sm text-gray-600">{option.example}</p>
+                      <p className="text-sm text-gray-600">
+                        <SpeakableText
+                          text={option.example}
+                          showButton={false}
+                          clickable={true}
+                          className="block"
+                        />
+                      </p>
                     )}
                   </button>
                 );
@@ -319,11 +373,23 @@ export default function SightWordsAr({
             </div>
 
             {feedback === "correct" && (
-              <p className="text-green-600 text-xl font-bold">✓ صحيح! أحسنت</p>
+              <p className="text-green-600 text-xl font-bold">
+                <SpeakableText
+                  text="✓ صحيح! أحسنت"
+                  showButton={false}
+                  clickable={true}
+                  className="block"
+                />
+              </p>
             )}
             {feedback === "wrong" && (
               <p className="text-red-600 text-xl font-bold">
-                ✗ خطأ. الإجابة الصحيحة: {currentQuestion.word.meaning}
+                <SpeakableText
+                  text={`✗ خطأ. الإجابة الصحيحة: ${currentQuestion.word.meaning}`}
+                  showButton={false}
+                  clickable={true}
+                  className="block"
+                />
               </p>
             )}
           </div>
@@ -331,7 +397,12 @@ export default function SightWordsAr({
 
         <div className="flex justify-center">
           <button onClick={resetTraining} className="btn-secondary">
-            إنهاء التدريب
+            <SpeakableText
+              text="إنهاء التدريب"
+              showButton={false}
+              clickable={true}
+              className="inline"
+            />
           </button>
         </div>
       </div>
@@ -341,20 +412,39 @@ export default function SightWordsAr({
   // Browse mode
   return (
     <div className="space-y-6">
+      <SpeechToggleButton position="top-right" showLabel={true} />
       {selectedWord ? (
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-6">
-            <p className="text-6xl font-bold text-primary-600 mb-4">
-              {selectedWord.word}
-            </p>
-            <p className="text-3xl font-bold text-gray-900 mb-2">
-              {selectedWord.meaning}
-            </p>
-            <p className="text-lg text-gray-600 mb-4">{selectedWord.example}</p>
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <p className="text-6xl font-bold text-primary-600">
+                <SpeakableText
+                  text={selectedWord.word}
+                  showButton={speechEnabled}
+                  buttonPosition="inline"
+                  className="block cursor-pointer hover:text-primary-700 transition-colors"
+                />
+              </p>
+            </div>
+            <SpeakableText
+              text={selectedWord.meaning}
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="text-3xl font-bold text-gray-900 mb-2"
+            />
+            <SpeakableText
+              text={selectedWord.example}
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="text-lg text-gray-600 mb-4"
+            />
             <span className="inline-block px-4 py-2 bg-primary-100 text-primary-700 rounded-lg text-sm font-semibold">
-              {selectedWord.category === "common" && "كلمة شائعة"}
-              {selectedWord.category === "preposition" && "حرف جر"}
-              {selectedWord.category === "verb" && "فعل"}
+              <SpeakableText
+                text={selectedWord.category === "common" ? "كلمة شائعة" : selectedWord.category === "preposition" ? "حرف جر" : "فعل"}
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </span>
           </div>
 
@@ -363,10 +453,20 @@ export default function SightWordsAr({
               onClick={() => setSelectedWord(null)}
               className="btn-secondary"
             >
-              العودة للكلمات
+              <SpeakableText
+                text="العودة للكلمات"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
             <button onClick={startTraining} className="btn-primary">
-              ابدأ التدريب
+              <SpeakableText
+                text="ابدأ التدريب"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
           </div>
         </div>
@@ -374,13 +474,26 @@ export default function SightWordsAr({
         <>
           <div className="text-center mb-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              الكلمات البصرية العربية
+              <SpeakableText
+                text="الكلمات البصرية العربية"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
             </h3>
-            <p className="text-gray-600 mb-4">
-              احفظ الكلمات الشائعة في اللغة العربية بسرعة
-            </p>
+            <SpeakableText
+              text="احفظ الكلمات الشائعة في اللغة العربية بسرعة"
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="text-gray-600 mb-4 block"
+            />
             <button onClick={startTraining} className="btn-primary">
-              ابدأ التدريب
+              <SpeakableText
+                text="ابدأ التدريب"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
           </div>
 
@@ -391,10 +504,20 @@ export default function SightWordsAr({
                 onClick={() => handleWordClick(word)}
                 className="p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-center hover:bg-primary-50 min-h-[120px] flex flex-col items-center justify-center"
               >
-                <p className="text-3xl font-bold text-primary-600 mb-2">
-                  {word.word}
-                </p>
-                <p className="text-sm text-gray-600">{word.meaning}</p>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <SpeakableText
+                    text={word.word}
+                    showButton={speechEnabled}
+                    buttonPosition="inline"
+                    className="text-3xl font-bold text-primary-600"
+                  />
+                </div>
+                <SpeakableText
+                  text={word.meaning}
+                  showButton={speechEnabled}
+                  buttonPosition="inline"
+                  className="text-sm text-gray-600"
+                />
               </button>
             ))}
           </div>

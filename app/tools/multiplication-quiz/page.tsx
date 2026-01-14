@@ -4,6 +4,7 @@ import MultiplicationQuizClient from "@/components/tools/MultiplicationQuizClien
 import { getToolBySlug, getToolsByCategory } from "@/lib/tools";
 import { generateToolMetadata } from "@/lib/metadata";
 import type { Metadata } from "next";
+import type { GradeLevel } from "@/lib/types";
 
 const tool = getToolBySlug("multiplication-quiz")!;
 const relatedTools = getToolsByCategory("math")
@@ -55,7 +56,14 @@ const relatedArticles = [
   },
 ];
 
-export default function MultiplicationQuizPage() {
+interface PageProps {
+  searchParams: { grade?: string };
+}
+
+export default function MultiplicationQuizPage({ searchParams }: PageProps) {
+  // قراءة grade من query params، مع fallback إلى "all" إذا لم يكن موجوداً
+  const grade = (searchParams.grade as GradeLevel | undefined) || "all";
+
   return (
     <PageLayout
       breadcrumbs={[
@@ -71,7 +79,7 @@ export default function MultiplicationQuizPage() {
         relatedTools={relatedTools}
         relatedArticles={relatedArticles}
       >
-        <MultiplicationQuizClient />
+        <MultiplicationQuizClient grade={grade} />
       </ToolTemplate>
     </PageLayout>
   );

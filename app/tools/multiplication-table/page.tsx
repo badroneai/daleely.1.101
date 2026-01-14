@@ -4,6 +4,7 @@ import MultiplicationTableClient from "@/components/tools/MultiplicationTableCli
 import { getToolBySlug, getToolsByCategory } from "@/lib/tools";
 import { generateToolMetadata } from "@/lib/metadata";
 import type { Metadata } from "next";
+import type { GradeLevel } from "@/lib/types";
 
 const tool = getToolBySlug("multiplication-table")!;
 const relatedTools = getToolsByCategory("math").filter((t) => t.slug !== tool.slug).slice(0, 2);
@@ -53,7 +54,14 @@ const relatedArticles = [
   },
 ];
 
-export default function MultiplicationTablePage() {
+interface PageProps {
+  searchParams: { grade?: string };
+}
+
+export default function MultiplicationTablePage({ searchParams }: PageProps) {
+  // قراءة grade من query params، مع fallback إلى "all" إذا لم يكن موجوداً
+  const grade = (searchParams.grade as GradeLevel | undefined) || "all";
+
   return (
     <PageLayout
       breadcrumbs={[
@@ -69,7 +77,7 @@ export default function MultiplicationTablePage() {
         relatedTools={relatedTools}
         relatedArticles={relatedArticles}
       >
-        <MultiplicationTableClient />
+        <MultiplicationTableClient grade={grade} />
       </ToolTemplate>
     </PageLayout>
   );

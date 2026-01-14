@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { getToolsByGradeLevel, getToolsByCategory } from "@/lib/tools";
 
-type GradeLevel = "1-2" | "3-4" | "5-6";
+type GradeLevel = "grade1" | "grade2" | "grade3" | "grade4" | "grade5" | "grade6" | "kg1" | "kg2" | "kg3";
 type SkillLevel = "beginner" | "intermediate" | "advanced";
 type Goal = "review" | "foundation" | "enrichment";
 type TimeAvailable = "3" | "10" | "15";
@@ -278,12 +278,18 @@ export default function ToolSelectorClient() {
         {/* Grade Level */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">عمر الطفل / الصف</h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {(
               [
-                { value: "1-2", label: "الصف الأول والثاني", age: "6-8 سنوات" },
-                { value: "3-4", label: "الصف الثالث والرابع", age: "8-10 سنوات" },
-                { value: "5-6", label: "الصف الخامس والسادس", age: "10-12 سنة" },
+                { value: "kg1", label: "رياض الأطفال - المستوى الأول", age: "3-4 سنوات" },
+                { value: "kg2", label: "رياض الأطفال - المستوى الثاني", age: "4-5 سنوات" },
+                { value: "kg3", label: "رياض الأطفال - التمهيدي", age: "5-6 سنوات" },
+                { value: "grade1", label: "الصف الأول الابتدائي", age: "6-7 سنوات" },
+                { value: "grade2", label: "الصف الثاني الابتدائي", age: "7-8 سنوات" },
+                { value: "grade3", label: "الصف الثالث الابتدائي", age: "8-9 سنوات" },
+                { value: "grade4", label: "الصف الرابع الابتدائي", age: "9-10 سنوات" },
+                { value: "grade5", label: "الصف الخامس الابتدائي", age: "10-11 سنة" },
+                { value: "grade6", label: "الصف السادس الابتدائي", age: "11-12 سنة" },
               ] as Array<{ value: GradeLevel; label: string; age: string }>
             ).map((level) => (
               <button

@@ -4,6 +4,7 @@ import TellingTimeClient from "@/components/tools/TellingTimeClient";
 import { getToolBySlug, getToolsByCategory } from "@/lib/tools";
 import { generateToolMetadata } from "@/lib/metadata";
 import type { Metadata } from "next";
+import type { GradeLevel } from "@/lib/types";
 
 const tool = getToolBySlug("telling-time")!;
 const relatedTools = getToolsByCategory("math")
@@ -46,7 +47,14 @@ const faq = [
 
 const relatedArticles: Array<{ slug: string; title: string }> = [];
 
-export default function TellingTimePage() {
+interface PageProps {
+  searchParams: { grade?: string };
+}
+
+export default function TellingTimePage({ searchParams }: PageProps) {
+  // قراءة grade من query params، مع fallback إلى "all" إذا لم يكن موجوداً
+  const grade = (searchParams.grade as GradeLevel | undefined) || "all";
+
   return (
     <PageLayout
       breadcrumbs={[
@@ -62,7 +70,7 @@ export default function TellingTimePage() {
         relatedTools={relatedTools}
         relatedArticles={relatedArticles}
       >
-        <TellingTimeClient />
+        <TellingTimeClient grade={grade} />
       </ToolTemplate>
     </PageLayout>
   );

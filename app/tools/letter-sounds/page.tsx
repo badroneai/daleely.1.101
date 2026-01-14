@@ -4,6 +4,7 @@ import LetterSoundsClient from "@/components/tools/LetterSoundsClient";
 import { getToolBySlug, getToolsByCategory } from "@/lib/tools";
 import { generateToolMetadata } from "@/lib/metadata";
 import type { Metadata } from "next";
+import type { GradeLevel } from "@/lib/types";
 
 const tool = getToolBySlug("letter-sounds")!;
 const relatedTools = getToolsByCategory("arabic")
@@ -46,7 +47,14 @@ const faq = [
 
 const relatedArticles: Array<{ slug: string; title: string }> = [];
 
-export default function LetterSoundsPage() {
+interface PageProps {
+  searchParams: { grade?: string };
+}
+
+export default function LetterSoundsPage({ searchParams }: PageProps) {
+  // قراءة grade من query params، مع fallback إلى "all" إذا لم يكن موجوداً
+  const grade = (searchParams.grade as GradeLevel | undefined) || "all";
+
   return (
     <PageLayout
       breadcrumbs={[
@@ -62,7 +70,7 @@ export default function LetterSoundsPage() {
         relatedTools={relatedTools}
         relatedArticles={relatedArticles}
       >
-        <LetterSoundsClient />
+        <LetterSoundsClient grade={grade} />
       </ToolTemplate>
     </PageLayout>
   );

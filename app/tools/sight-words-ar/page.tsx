@@ -4,6 +4,7 @@ import SightWordsArClient from "@/components/tools/SightWordsArClient";
 import { getToolBySlug, getToolsByCategory } from "@/lib/tools";
 import { generateToolMetadata } from "@/lib/metadata";
 import type { Metadata } from "next";
+import type { GradeLevel } from "@/lib/types";
 
 const tool = getToolBySlug("sight-words-ar")!;
 const relatedTools = getToolsByCategory("arabic")
@@ -51,7 +52,14 @@ const relatedArticles: Array<{ slug: string; title: string }> = [
   },
 ];
 
-export default function SightWordsArPage() {
+interface PageProps {
+  searchParams: { grade?: string };
+}
+
+export default function SightWordsArPage({ searchParams }: PageProps) {
+  // قراءة grade من query params، مع fallback إلى "all" إذا لم يكن موجوداً
+  const grade = (searchParams.grade as GradeLevel | undefined) || "all";
+
   return (
     <PageLayout
       breadcrumbs={[
@@ -67,7 +75,7 @@ export default function SightWordsArPage() {
         relatedTools={relatedTools}
         relatedArticles={relatedArticles}
       >
-        <SightWordsArClient />
+        <SightWordsArClient grade={grade} />
       </ToolTemplate>
     </PageLayout>
   );

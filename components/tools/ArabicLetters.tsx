@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { playClickSound } from "@/lib/sounds";
-import { speakLetter, setSpeechEnabled } from "@/lib/speech";
+import { speakLetter, setSpeechEnabled, isSpeechEnabled } from "@/lib/speech";
+import { speakLetterWithAudio } from "@/lib/audio/audio-player";
+import AudioPlayer from "@/components/audio/AudioPlayer";
+import SpeakableText from "@/components/audio/SpeakableText";
+import SpeechToggleButton from "@/components/audio/SpeechToggleButton";
+import { getToolScope } from "@/lib/CURRICULUM_MATRIX";
+import type { GradeLevel } from "@/lib/types";
 
 interface ArabicLettersProps {
-  gradeLevel: "1-2" | "3-4" | "5-6" | "all";
+  grade: GradeLevel | "all";
   soundEnabled: boolean;
   mode: "quick" | "full";
 }
@@ -45,10 +51,12 @@ const arabicLetters = [
 type LetterForm = "isolated" | "initial" | "medial" | "final";
 
 export default function ArabicLetters({
-  gradeLevel,
+  grade,
   soundEnabled,
   mode,
 }: ArabicLettersProps) {
+  // Get scope from CURRICULUM_MATRIX
+  const scope = getToolScope("arabic-letters", grade);
   const [selectedLetter, setSelectedLetter] = useState<typeof arabicLetters[0] | null>(null);
   const [showForm, setShowForm] = useState<LetterForm>("isolated");
   const [isTraining, setIsTraining] = useState(false);
@@ -56,14 +64,23 @@ export default function ArabicLetters({
   const [userAnswer, setUserAnswer] = useState<string>("");
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [speechEnabled, setSpeechEnabledState] = useState(false);
+
+  // Sync with global speech enabled state
+  useEffect(() => {
+    setSpeechEnabledState(isSpeechEnabled());
+    const interval = setInterval(() => {
+      setSpeechEnabledState(isSpeechEnabled());
+    }, 200);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLetterClick = async (letter: typeof arabicLetters[0]) => {
     setSelectedLetter(letter);
-    setSpeechEnabled(soundEnabled);
-    if (soundEnabled) {
+    if (speechEnabled) {
       playClickSound();
-      // Speak the letter name
-      await speakLetter(letter.letter, letter.name);
+      // Use hybrid audio system (audio files if available, otherwise Web Speech API)
+      await speakLetterWithAudio(letter.letter, letter.name);
     }
     trackEvent("tool_open", { tool: "arabic-letters", letter: letter.letter });
   };
@@ -71,16 +88,15 @@ export default function ArabicLetters({
   const startTraining = () => {
     setIsTraining(true);
     setScore({ correct: 0, total: 0 });
-    setSpeechEnabled(soundEnabled);
     const question = generateQuestion();
     setUserAnswer("");
     setFeedback(null);
     trackEvent("start_training", { tool: "arabic-letters" });
     
-    // Speak the letter
-    if (soundEnabled && question) {
+    // Speak the letter using hybrid audio system
+    if (speechEnabled && question) {
       setTimeout(async () => {
-        await speakLetter(question.letter, question.name);
+        await speakLetterWithAudio(question.letter, question.name);
       }, 300);
     }
   };
@@ -104,19 +120,19 @@ export default function ArabicLetters({
     if (isCorrect) {
       trackEvent("answer_correct", { tool: "arabic-letters" });
       setFeedback("correct");
-      // Speak the correct letter
-      if (soundEnabled) {
+      // Speak the correct letter using hybrid audio system
+      if (speechEnabled) {
         setTimeout(async () => {
-          await speakLetter(currentQuestion.letter, currentQuestion.name);
+          await speakLetterWithAudio(currentQuestion.letter, currentQuestion.name);
         }, 300);
       }
     } else {
       trackEvent("answer_wrong", { tool: "arabic-letters" });
       setFeedback("wrong");
-      // Speak the correct letter
-      if (soundEnabled) {
+      // Speak the correct letter using hybrid audio system
+      if (speechEnabled) {
         setTimeout(async () => {
-          await speakLetter(currentQuestion.letter, currentQuestion.name);
+          await speakLetterWithAudio(currentQuestion.letter, currentQuestion.name);
         }, 500);
       }
     }
@@ -140,28 +156,40 @@ export default function ArabicLetters({
   if (isTraining) {
     return (
       <div className="space-y-6">
+        <SpeechToggleButton position="top-right" showLabel={true} />
         <div className="bg-gray-100 rounded-lg p-4 text-center">
           <p className="text-lg text-gray-700">
-            النتيجة: {score.correct} / {score.total}
+            <SpeakableText
+              text={`النتيجة: ${score.correct} / ${score.total}`}
+              showButton={false}
+              clickable={true}
+              className="block"
+            />
           </p>
         </div>
 
         <div className="text-center bg-white rounded-xl shadow-lg p-8">
-          <button
-            onClick={async () => {
-              if (soundEnabled && currentQuestion) {
-                await speakLetter(currentQuestion.letter, currentQuestion.name);
-              }
-            }}
-            className="mb-6"
-          >
-            <p className="text-6xl font-bold text-primary-600 mb-2 hover:text-primary-700 transition-colors cursor-pointer">
-              {currentQuestion?.letter}
-            </p>
-          </button>
-          <p className="text-xl text-gray-600 mb-6">
-            ما اسم هذا الحرف؟
-          </p>
+          <div className="mb-6">
+            <div className="flex items-center justify-center gap-4 mb-2">
+              <p className="text-6xl font-bold text-primary-600">
+                <SpeakableText
+                  text={currentQuestion?.letter || ""}
+                  showButton={false}
+                  clickable={true}
+                  className="block cursor-pointer hover:text-primary-700 transition-colors"
+                />
+              </p>
+              {speechEnabled && currentQuestion && (
+                <AudioPlayer text={currentQuestion.name} />
+              )}
+            </div>
+            <SpeakableText
+              text="ما اسم هذا الحرف؟"
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="text-xl text-gray-600"
+            />
+          </div>
           <div className="flex gap-4 justify-center items-center">
             <input
               type="text"
@@ -173,22 +201,44 @@ export default function ArabicLetters({
               autoFocus
             />
             <button onClick={handleAnswer} className="btn-primary text-lg px-8 py-4">
-              تحقق
+              <SpeakableText
+                text="تحقق"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
           </div>
           {feedback === "correct" && (
-            <p className="text-green-600 text-xl font-bold mt-4">✓ صحيح! أحسنت</p>
+            <p className="text-green-600 text-xl font-bold mt-4">
+              <SpeakableText
+                text="✓ صحيح! أحسنت"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
+            </p>
           )}
           {feedback === "wrong" && (
             <p className="text-red-600 text-xl font-bold mt-4">
-              ✗ خطأ. الإجابة الصحيحة: {currentQuestion?.name}
+              <SpeakableText
+                text={`✗ خطأ. الإجابة الصحيحة: ${currentQuestion?.name}`}
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
             </p>
           )}
         </div>
 
         <div className="flex justify-center">
           <button onClick={resetTraining} className="btn-secondary">
-            إنهاء التدريب
+            <SpeakableText
+              text="إنهاء التدريب"
+              showButton={false}
+              clickable={true}
+              className="inline"
+            />
           </button>
         </div>
       </div>
@@ -198,82 +248,112 @@ export default function ArabicLetters({
   // Browse mode
   return (
     <div className="space-y-6">
+      <SpeechToggleButton position="top-right" showLabel={true} />
       {selectedLetter ? (
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-6">
-            <button
-              onClick={async () => {
-                if (soundEnabled) {
-                  await speakLetter(selectedLetter.letter, selectedLetter.name);
-                }
-              }}
-              className="mb-4"
-            >
-              <p className="text-8xl font-bold text-primary-600 hover:text-primary-700 transition-colors cursor-pointer">
-                {selectedLetter.letter}
+            <div className="mb-4">
+              <p className="text-8xl font-bold text-primary-600">
+                <SpeakableText
+                  text={selectedLetter.letter}
+                  showButton={false}
+                  clickable={true}
+                  className="block cursor-pointer hover:text-primary-700 transition-colors"
+                />
               </p>
-            </button>
-            <button
-              onClick={async () => {
-                if (soundEnabled) {
-                  await speakLetter(selectedLetter.letter, selectedLetter.name);
-                }
-              }}
-              className="mb-2"
-            >
-              <p className="text-3xl font-bold text-gray-900 hover:text-primary-600 transition-colors cursor-pointer">
-                {selectedLetter.name}
-              </p>
-            </button>
+            </div>
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <SpeakableText
+                text={selectedLetter.name}
+                showButton={speechEnabled}
+                buttonPosition="inline"
+                className="text-3xl font-bold text-gray-900"
+              />
+            </div>
           </div>
 
           <div className="mb-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">أشكال الحرف:</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              <SpeakableText
+                text="أشكال الحرف:"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
+            </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <button
-                onClick={async () => {
-                  if (soundEnabled) {
-                    await speakLetter(selectedLetter.letter, selectedLetter.name);
-                  }
-                }}
-                className="text-center p-4 bg-gray-50 rounded-lg hover:bg-primary-50 transition-colors"
-              >
-                <p className="text-sm text-gray-600 mb-2">منفصل</p>
-                <p className="text-4xl font-bold text-primary-600">{selectedLetter.isolated}</p>
-              </button>
-              <button
-                onClick={async () => {
-                  if (soundEnabled) {
-                    await speakLetter(selectedLetter.letter, selectedLetter.name);
-                  }
-                }}
-                className="text-center p-4 bg-gray-50 rounded-lg hover:bg-primary-50 transition-colors"
-              >
-                <p className="text-sm text-gray-600 mb-2">في البداية</p>
-                <p className="text-4xl font-bold text-primary-600">{selectedLetter.initial}</p>
-              </button>
-              <button
-                onClick={async () => {
-                  if (soundEnabled) {
-                    await speakLetter(selectedLetter.letter, selectedLetter.name);
-                  }
-                }}
-                className="text-center p-4 bg-gray-50 rounded-lg hover:bg-primary-50 transition-colors"
-              >
-                <p className="text-sm text-gray-600 mb-2">في الوسط</p>
-                <p className="text-4xl font-bold text-primary-600">{selectedLetter.medial}</p>
-              </button>
-              <button
-                onClick={async () => {
-                  if (soundEnabled) {
-                    await speakLetter(selectedLetter.letter, selectedLetter.name);
-                  }
-                }}
-                className="text-center p-4 bg-gray-50 rounded-lg hover:bg-primary-50 transition-colors"
-              >
-                <p className="text-sm text-gray-600 mb-2">في النهاية</p>
-                <p className="text-4xl font-bold text-primary-600">{selectedLetter.final}</p>
-              </button>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-2">
+                  <SpeakableText
+                    text="منفصل"
+                    showButton={false}
+                    clickable={true}
+                    className="block"
+                  />
+                </p>
+                <div className="flex items-center justify-center gap-2">
+                  <SpeakableText
+                    text={selectedLetter.isolated}
+                    showButton={speechEnabled}
+                    buttonPosition="inline"
+                    className="text-4xl font-bold text-primary-600"
+                  />
+                </div>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-2">
+                  <SpeakableText
+                    text="في البداية"
+                    showButton={false}
+                    clickable={true}
+                    className="block"
+                  />
+                </p>
+                <div className="flex items-center justify-center gap-2">
+                  <SpeakableText
+                    text={selectedLetter.initial}
+                    showButton={speechEnabled}
+                    buttonPosition="inline"
+                    className="text-4xl font-bold text-primary-600"
+                  />
+                </div>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-2">
+                  <SpeakableText
+                    text="في الوسط"
+                    showButton={false}
+                    clickable={true}
+                    className="block"
+                  />
+                </p>
+                <div className="flex items-center justify-center gap-2">
+                  <SpeakableText
+                    text={selectedLetter.medial}
+                    showButton={speechEnabled}
+                    buttonPosition="inline"
+                    className="text-4xl font-bold text-primary-600"
+                  />
+                </div>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-2">
+                  <SpeakableText
+                    text="في النهاية"
+                    showButton={false}
+                    clickable={true}
+                    className="block"
+                  />
+                </p>
+                <div className="flex items-center justify-center gap-2">
+                  <SpeakableText
+                    text={selectedLetter.final}
+                    showButton={speechEnabled}
+                    buttonPosition="inline"
+                    className="text-4xl font-bold text-primary-600"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -282,10 +362,20 @@ export default function ArabicLetters({
               onClick={() => setSelectedLetter(null)}
               className="btn-secondary"
             >
-              العودة للحروف
+              <SpeakableText
+                text="العودة للحروف"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
             <button onClick={startTraining} className="btn-primary">
-              ابدأ التدريب
+              <SpeakableText
+                text="ابدأ التدريب"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
           </div>
         </div>
@@ -293,13 +383,26 @@ export default function ArabicLetters({
         <>
           <div className="text-center mb-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              الحروف العربية
+              <SpeakableText
+                text="الحروف العربية"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
             </h3>
-            <p className="text-gray-600 mb-4">
-              اضغط على أي حرف لتعرف اسمه وأشكاله
-            </p>
+            <SpeakableText
+              text="اضغط على أي حرف لتعرف اسمه وأشكاله"
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="text-gray-600 mb-4 block"
+            />
             <button onClick={startTraining} className="btn-primary">
-              ابدأ التدريب
+              <SpeakableText
+                text="ابدأ التدريب"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
           </div>
 

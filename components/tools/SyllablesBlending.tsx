@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { playClickSound, playCorrectSound, playWrongSound } from "@/lib/sounds";
-import { speakWord, speakText, setSpeechEnabled } from "@/lib/speech";
+import { speakWord, speakText, setSpeechEnabled, isSpeechEnabled } from "@/lib/speech";
+import { speakTextWithAudio } from "@/lib/audio/audio-player";
+import AudioPlayer from "@/components/audio/AudioPlayer";
+import SpeakableText from "@/components/audio/SpeakableText";
+import QuestionWithAudio from "@/components/audio/QuestionWithAudio";
+import SpeechToggleButton from "@/components/audio/SpeechToggleButton";
+import { getToolScope } from "@/lib/CURRICULUM_MATRIX";
+import type { GradeLevel } from "@/lib/types";
 
 interface SyllablesBlendingProps {
-  gradeLevel: "1-2" | "3-4" | "5-6" | "all";
+  grade: GradeLevel | "all";
   soundEnabled: boolean;
   mode: "quick" | "full";
 }
@@ -105,10 +112,12 @@ type SyllableType = typeof syllables[0];
 type WordType = typeof words[0];
 
 export default function SyllablesBlending({
-  gradeLevel,
+  grade,
   soundEnabled,
   mode,
 }: SyllablesBlendingProps) {
+  // Get scope from CURRICULUM_MATRIX
+  const scope = getToolScope("syllables-blending", grade);
   const [selectedSyllable, setSelectedSyllable] = useState<SyllableType | null>(null);
   const [selectedWord, setSelectedWord] = useState<WordType | null>(null);
   const [isTraining, setIsTraining] = useState(false);
@@ -125,15 +134,24 @@ export default function SyllablesBlending({
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [showParts, setShowParts] = useState(false);
+  const [speechEnabled, setSpeechEnabledState] = useState(false);
+
+  // Sync with global speech enabled state
+  useEffect(() => {
+    setSpeechEnabledState(isSpeechEnabled());
+    const interval = setInterval(() => {
+      setSpeechEnabledState(isSpeechEnabled());
+    }, 200);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSyllableClick = async (syllable: SyllableType) => {
     setSelectedSyllable(syllable);
     setSelectedWord(null);
-    setSpeechEnabled(soundEnabled);
-    if (soundEnabled) {
+    if (speechEnabled) {
       playClickSound();
       // Speak the syllable
-      await speakWord(syllable.syllable);
+      await speakTextWithAudio(syllable.syllable);
     }
     trackEvent("tool_open", { tool: "syllables-blending", syllable: syllable.syllable });
   };
@@ -141,11 +159,10 @@ export default function SyllablesBlending({
   const handleWordClick = async (word: WordType) => {
     setSelectedWord(word);
     setSelectedSyllable(null);
-    setSpeechEnabled(soundEnabled);
-    if (soundEnabled) {
+    if (speechEnabled) {
       playClickSound();
       // Speak the word
-      await speakWord(word.word);
+      await speakTextWithAudio(word.word);
     }
     trackEvent("tool_open", { tool: "syllables-blending", word: word.word });
   };
@@ -154,7 +171,6 @@ export default function SyllablesBlending({
     setIsTraining(true);
     setTrainingMode(mode);
     setScore({ correct: 0, total: 0 });
-    setSpeechEnabled(soundEnabled);
     const question = generateQuestion(mode);
     setSelectedAnswer(null);
     setFeedback(null);
@@ -162,11 +178,11 @@ export default function SyllablesBlending({
     trackEvent("start_training", { tool: "syllables-blending", mode });
     
     // Speak the question
-    if (soundEnabled && question) {
+    if (speechEnabled && question) {
       setTimeout(async () => {
         // Speak each part
         for (let i = 0; i < question.parts.length; i++) {
-          await speakText(question.parts[i]);
+          await speakTextWithAudio(question.parts[i]);
           if (i < question.parts.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 200));
           }
@@ -235,21 +251,21 @@ export default function SyllablesBlending({
     if (isCorrect) {
       trackEvent("answer_correct", { tool: "syllables-blending" });
       setFeedback("correct");
-      if (soundEnabled) {
+      if (speechEnabled) {
         playCorrectSound();
         // Speak the correct answer
         setTimeout(async () => {
-          await speakWord(currentQuestion.correctAnswer);
+          await speakTextWithAudio(currentQuestion.correctAnswer);
         }, 300);
       }
     } else {
       trackEvent("answer_wrong", { tool: "syllables-blending" });
       setFeedback("wrong");
-      if (soundEnabled) {
+      if (speechEnabled) {
         playWrongSound();
         // Speak the correct answer
         setTimeout(async () => {
-          await speakWord(currentQuestion.correctAnswer);
+          await speakTextWithAudio(currentQuestion.correctAnswer);
         }, 500);
       }
     }
@@ -263,10 +279,10 @@ export default function SyllablesBlending({
       setShowParts(false);
       
       // Speak the next question
-      if (soundEnabled && nextQuestion) {
+      if (speechEnabled && nextQuestion) {
         setTimeout(async () => {
           for (let i = 0; i < nextQuestion.parts.length; i++) {
-            await speakText(nextQuestion.parts[i]);
+            await speakTextWithAudio(nextQuestion.parts[i]);
             if (i < nextQuestion.parts.length - 1) {
               await new Promise(resolve => setTimeout(resolve, 200));
             }
@@ -289,49 +305,55 @@ export default function SyllablesBlending({
   if (isTraining) {
     return (
       <div className="space-y-6">
+        <SpeechToggleButton position="top-right" showLabel={true} />
         <div className="bg-gray-100 rounded-lg p-4 text-center">
           <p className="text-lg text-gray-700">
-            النتيجة: {score.correct} / {score.total}
+            <SpeakableText
+              text={`النتيجة: ${score.correct} / ${score.total}`}
+              showButton={false}
+              clickable={true}
+              className="block"
+            />
           </p>
         </div>
 
         {currentQuestion && (
           <div className="text-center bg-white rounded-xl shadow-lg p-8">
-            <p className="text-2xl text-gray-700 mb-6">
-              {currentQuestion.type === "syllable"
-                ? "ما هو المقطع الناتج من دمج هذه الحروف؟"
-                : "ما هي الكلمة الناتجة من دمج هذه الحروف؟"}
-            </p>
+            <div className="mb-6">
+              <QuestionWithAudio
+                question={currentQuestion.type === "syllable"
+                  ? "ما هو المقطع الناتج من دمج هذه الحروف؟"
+                  : "ما هي الكلمة الناتجة من دمج هذه الحروف؟"}
+                autoSpeak={false}
+                showAudioButton={speechEnabled}
+                className="text-2xl text-gray-700"
+              />
+            </div>
 
             <div className="mb-6">
-              <div className="flex justify-center gap-4 mb-4">
+              <div className="flex justify-center gap-4 mb-4 flex-wrap">
                 {currentQuestion.parts.map((part, index) => (
-                  <button
-                    key={index}
-                    onClick={async () => {
-                      if (soundEnabled) {
-                        await speakText(part);
-                      }
-                    }}
-                    className="text-6xl font-bold text-primary-600 bg-primary-50 p-4 rounded-lg hover:bg-primary-100 transition-colors cursor-pointer"
-                  >
-                    {part}
-                  </button>
+                  <div key={index} className="flex items-center gap-2">
+                    <SpeakableText
+                      text={part}
+                      showButton={speechEnabled}
+                      buttonPosition="inline"
+                      className="text-6xl font-bold text-primary-600 bg-primary-50 p-4 rounded-lg hover:bg-primary-100 transition-colors"
+                    />
+                  </div>
                 ))}
               </div>
               {showParts && (
-                <button
-                  onClick={async () => {
-                    if (soundEnabled) {
-                      await speakWord(currentQuestion.correctAnswer);
-                    }
-                  }}
-                  className="mt-4"
-                >
-                  <p className="text-2xl text-gray-600 hover:text-primary-600 transition-colors cursor-pointer">
-                    = {currentQuestion.correctAnswer}
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <p className="text-2xl text-gray-600">
+                    = <SpeakableText
+                      text={currentQuestion.correctAnswer}
+                      showButton={speechEnabled}
+                      buttonPosition="inline"
+                      className="inline"
+                    />
                   </p>
-                </button>
+                </div>
               )}
             </div>
 
@@ -359,18 +381,35 @@ export default function SyllablesBlending({
                     disabled={showFeedback}
                     className={buttonClass}
                   >
-                    {option}
+                    <SpeakableText
+                      text={option}
+                      showButton={false}
+                      clickable={true}
+                      className="block"
+                    />
                   </button>
                 );
               })}
             </div>
 
             {feedback === "correct" && (
-              <p className="text-green-600 text-xl font-bold">✓ صحيح! أحسنت</p>
+              <p className="text-green-600 text-xl font-bold">
+                <SpeakableText
+                  text="✓ صحيح! أحسنت"
+                  showButton={false}
+                  clickable={true}
+                  className="block"
+                />
+              </p>
             )}
             {feedback === "wrong" && (
               <p className="text-red-600 text-xl font-bold">
-                ✗ خطأ. الإجابة الصحيحة: {currentQuestion.correctAnswer}
+                <SpeakableText
+                  text={`✗ خطأ. الإجابة الصحيحة: ${currentQuestion.correctAnswer}`}
+                  showButton={false}
+                  clickable={true}
+                  className="block"
+                />
               </p>
             )}
           </div>
@@ -378,7 +417,12 @@ export default function SyllablesBlending({
 
         <div className="flex justify-center gap-4">
           <button onClick={resetTraining} className="btn-secondary">
-            إنهاء التدريب
+            <SpeakableText
+              text="إنهاء التدريب"
+              showButton={false}
+              clickable={true}
+              className="inline"
+            />
           </button>
         </div>
       </div>
@@ -388,25 +432,38 @@ export default function SyllablesBlending({
   // Browse mode
   return (
     <div className="space-y-6">
+      <SpeechToggleButton position="top-right" showLabel={true} />
       {selectedSyllable ? (
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-6">
-            <div className="flex justify-center gap-4 mb-4">
+            <div className="flex justify-center gap-4 mb-4 flex-wrap">
               {selectedSyllable.parts.map((part, index) => (
-                <div
-                  key={index}
-                  className="text-6xl font-bold text-primary-600 bg-primary-50 p-4 rounded-lg"
-                >
-                  {part}
+                <div key={index} className="flex items-center gap-2">
+                  <SpeakableText
+                    text={part}
+                    showButton={speechEnabled}
+                    buttonPosition="inline"
+                    className="text-6xl font-bold text-primary-600 bg-primary-50 p-4 rounded-lg"
+                  />
                 </div>
               ))}
             </div>
-            <p className="text-4xl font-bold text-gray-900 mb-2">
-              = {selectedSyllable.syllable}
-            </p>
-            <p className="text-lg text-gray-600">
-              مثال: {selectedSyllable.word} = {selectedSyllable.meaning}
-            </p>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <p className="text-4xl font-bold text-gray-900">
+                = <SpeakableText
+                  text={selectedSyllable.syllable}
+                  showButton={speechEnabled}
+                  buttonPosition="inline"
+                  className="inline"
+                />
+              </p>
+            </div>
+            <SpeakableText
+              text={`مثال: ${selectedSyllable.word} = ${selectedSyllable.meaning}`}
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="text-lg text-gray-600"
+            />
           </div>
 
           <div className="flex gap-4 justify-center">
@@ -414,13 +471,23 @@ export default function SyllablesBlending({
               onClick={() => setSelectedSyllable(null)}
               className="btn-secondary"
             >
-              العودة للمقاطع
+              <SpeakableText
+                text="العودة للمقاطع"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
             <button
               onClick={() => startTraining("syllables")}
               className="btn-primary"
             >
-              ابدأ التدريب
+              <SpeakableText
+                text="ابدأ التدريب"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
           </div>
         </div>
@@ -429,21 +496,38 @@ export default function SyllablesBlending({
           <div className="text-center mb-6">
             <div className="flex justify-center gap-2 mb-4 flex-wrap">
               {selectedWord.parts.map((part, index) => (
-                <div
-                  key={index}
-                  className="text-5xl font-bold text-primary-600 bg-primary-50 p-3 rounded-lg"
-                >
-                  {part}
+                <div key={index} className="flex items-center gap-2">
+                  <SpeakableText
+                    text={part}
+                    showButton={speechEnabled}
+                    buttonPosition="inline"
+                    className="text-5xl font-bold text-primary-600 bg-primary-50 p-3 rounded-lg"
+                  />
                 </div>
               ))}
             </div>
-            <p className="text-4xl font-bold text-gray-900 mb-2">
-              = {selectedWord.word}
-            </p>
-            <p className="text-lg text-gray-600 mb-4">
-              المقاطع: {selectedWord.syllables.join(" + ")}
-            </p>
-            <p className="text-xl text-gray-700">{selectedWord.meaning}</p>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <p className="text-4xl font-bold text-gray-900">
+                = <SpeakableText
+                  text={selectedWord.word}
+                  showButton={speechEnabled}
+                  buttonPosition="inline"
+                  className="inline"
+                />
+              </p>
+            </div>
+            <SpeakableText
+              text={`المقاطع: ${selectedWord.syllables.join(" + ")}`}
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="text-lg text-gray-600 mb-4"
+            />
+            <SpeakableText
+              text={selectedWord.meaning}
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="text-xl text-gray-700"
+            />
           </div>
 
           <div className="flex gap-4 justify-center">
@@ -451,10 +535,20 @@ export default function SyllablesBlending({
               onClick={() => setSelectedWord(null)}
               className="btn-secondary"
             >
-              العودة للكلمات
+              <SpeakableText
+                text="العودة للكلمات"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
             <button onClick={() => startTraining("words")} className="btn-primary">
-              ابدأ التدريب
+              <SpeakableText
+                text="ابدأ التدريب"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
           </div>
         </div>
@@ -462,26 +556,51 @@ export default function SyllablesBlending({
         <>
           <div className="text-center mb-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              المقاطع والدمج
+              <SpeakableText
+                text="المقاطع والدمج"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
             </h3>
-            <p className="text-gray-600 mb-4">
-              تعلم تكوين المقاطع ودمج الحروف لقراءة الكلمات
-            </p>
+            <SpeakableText
+              text="تعلم تكوين المقاطع ودمج الحروف لقراءة الكلمات"
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="text-gray-600 mb-4 block"
+            />
             <div className="flex gap-4 justify-center">
               <button
                 onClick={() => startTraining("syllables")}
                 className="btn-primary"
               >
-                تدريب المقاطع
+                <SpeakableText
+                  text="تدريب المقاطع"
+                  showButton={false}
+                  clickable={true}
+                  className="inline"
+                />
               </button>
               <button onClick={() => startTraining("words")} className="btn-primary">
-                تدريب الكلمات
+                <SpeakableText
+                  text="تدريب الكلمات"
+                  showButton={false}
+                  clickable={true}
+                  className="inline"
+                />
               </button>
             </div>
           </div>
 
           <div className="mb-8">
-            <h4 className="text-xl font-bold text-gray-900 mb-4">المقاطع البسيطة:</h4>
+            <h4 className="text-xl font-bold text-gray-900 mb-4">
+              <SpeakableText
+                text="المقاطع البسيطة:"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
+            </h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {syllables.map((syllable) => (
                 <button
@@ -489,24 +608,48 @@ export default function SyllablesBlending({
                   onClick={() => handleSyllableClick(syllable)}
                   className="p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-center hover:bg-primary-50"
                 >
-                  <div className="flex justify-center gap-2 mb-2">
+                  <div className="flex justify-center gap-2 mb-2 flex-wrap">
                     {syllable.parts.map((part, index) => (
                       <span key={index} className="text-2xl font-bold text-primary-600">
-                        {part}
+                        <SpeakableText
+                          text={part}
+                          showButton={false}
+                          clickable={true}
+                          className="inline"
+                        />
                       </span>
                     ))}
                   </div>
-                  <p className="text-3xl font-bold text-gray-900 mb-1">
-                    = {syllable.syllable}
-                  </p>
-                  <p className="text-sm text-gray-600">{syllable.word}</p>
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <p className="text-3xl font-bold text-gray-900">
+                      = <SpeakableText
+                        text={syllable.syllable}
+                        showButton={speechEnabled}
+                        buttonPosition="inline"
+                        className="inline"
+                      />
+                    </p>
+                  </div>
+                  <SpeakableText
+                    text={syllable.word}
+                    showButton={speechEnabled}
+                    buttonPosition="inline"
+                    className="text-sm text-gray-600"
+                  />
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <h4 className="text-xl font-bold text-gray-900 mb-4">الكلمات:</h4>
+            <h4 className="text-xl font-bold text-gray-900 mb-4">
+              <SpeakableText
+                text="الكلمات:"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
+            </h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {words.map((word) => (
                 <button
@@ -517,14 +660,31 @@ export default function SyllablesBlending({
                   <div className="flex justify-center gap-1 mb-2 flex-wrap">
                     {word.parts.map((part, index) => (
                       <span key={index} className="text-xl font-bold text-primary-600">
-                        {part}
+                        <SpeakableText
+                          text={part}
+                          showButton={false}
+                          clickable={true}
+                          className="inline"
+                        />
                       </span>
                     ))}
                   </div>
-                  <p className="text-3xl font-bold text-gray-900 mb-1">
-                    = {word.word}
-                  </p>
-                  <p className="text-sm text-gray-600">{word.meaning}</p>
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <p className="text-3xl font-bold text-gray-900">
+                      = <SpeakableText
+                        text={word.word}
+                        showButton={speechEnabled}
+                        buttonPosition="inline"
+                        className="inline"
+                      />
+                    </p>
+                  </div>
+                  <SpeakableText
+                    text={word.meaning}
+                    showButton={speechEnabled}
+                    buttonPosition="inline"
+                    className="text-sm text-gray-600"
+                  />
                 </button>
               ))}
             </div>

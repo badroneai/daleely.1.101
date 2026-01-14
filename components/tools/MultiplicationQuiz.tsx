@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { playCorrectSound, playWrongSound, playCompleteSound } from "@/lib/sounds";
-import { speakNumber, speakOperation, setSpeechEnabled } from "@/lib/speech";
+import { speakNumber, speakOperation, setSpeechEnabled, isSpeechEnabled } from "@/lib/speech";
+import { speakNumberWithAudio, speakOperationWithAudio } from "@/lib/audio/audio-player";
+import SpeechToggleButton from "@/components/audio/SpeechToggleButton";
+import SpeakableText from "@/components/audio/SpeakableText";
+import { getToolScope } from "@/lib/CURRICULUM_MATRIX";
+import type { GradeLevel } from "@/lib/types";
 
 interface MultiplicationQuizProps {
-  gradeLevel: "1-2" | "3-4" | "5-6" | "all";
+  grade: GradeLevel | "all";
   soundEnabled: boolean;
   mode: "quick" | "full";
 }
@@ -20,7 +25,7 @@ interface Question {
 }
 
 export default function MultiplicationQuiz({
-  gradeLevel,
+  grade,
   soundEnabled,
   mode,
 }: MultiplicationQuizProps) {
@@ -32,22 +37,41 @@ export default function MultiplicationQuiz({
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [timeStarted, setTimeStarted] = useState<number | null>(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
+  const [speechEnabled, setSpeechEnabledState] = useState(false);
 
-  // Determine which tables to use based on grade level
-  const getAvailableTables = () => {
-    if (gradeLevel === "1-2") return [2, 3, 4, 5];
-    if (gradeLevel === "3-4") return [2, 3, 4, 5, 6, 7, 8, 9, 10];
-    if (gradeLevel === "5-6") return [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-    return [2, 3, 4, 5, 6, 7, 8, 9, 10];
-  };
+  // Sync with global speech enabled state
+  useEffect(() => {
+    setSpeechEnabledState(isSpeechEnabled());
+    const interval = setInterval(() => {
+      setSpeechEnabledState(isSpeechEnabled());
+    }, 200);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Get available tables and difficulty from scopeByGrade
+  const { availableTables, difficulty } = useMemo(() => {
+    const scope = getToolScope("multiplication-quiz", grade);
+    const tables: number[] = scope && typeof scope === "object" && "tables" in scope 
+      ? (scope.tables as number[]) 
+      : [];
+    const diff: "easy" | "medium" | "hard" = scope && typeof scope === "object" && "difficulty" in scope
+      ? (scope.difficulty as "easy" | "medium" | "hard")
+      : "medium";
+    return { availableTables: tables, difficulty: diff };
+  }, [grade]);
 
   const generateQuestions = (count: number = 10): Question[] => {
-    const availableTables = getAvailableTables();
+    if (availableTables.length === 0) {
+      return [];
+    }
+    
     const newQuestions: Question[] = [];
 
     for (let i = 0; i < count; i++) {
       const a = availableTables[Math.floor(Math.random() * availableTables.length)];
-      const b = Math.floor(Math.random() * 12) + 1;
+      // Adjust max multiplier based on difficulty
+      const maxB = difficulty === "easy" ? 10 : difficulty === "medium" ? 12 : 15;
+      const b = Math.floor(Math.random() * maxB) + 1;
       newQuestions.push({
         a,
         b,
@@ -67,19 +91,18 @@ export default function MultiplicationQuiz({
     setIsFinished(false);
     setScore({ correct: 0, total: 0 });
     setUserAnswer("");
-    setSpeechEnabled(soundEnabled);
     setTimeStarted(Date.now());
     trackEvent("start_training", { tool: "multiplication-quiz" });
     
     // Speak the first question
-    if (soundEnabled && newQuestions.length > 0) {
+    if (speechEnabled && newQuestions.length > 0) {
       setTimeout(async () => {
         const firstQuestion = newQuestions[0];
-        await speakNumber(firstQuestion.a);
+        await speakNumberWithAudio(firstQuestion.a);
         setTimeout(async () => {
-          await speakOperation("multiply");
+          await speakOperationWithAudio("multiply");
           setTimeout(async () => {
-            await speakNumber(firstQuestion.b);
+            await speakNumberWithAudio(firstQuestion.b);
           }, 300);
         }, 300);
       }, 300);
@@ -108,20 +131,20 @@ export default function MultiplicationQuiz({
 
     if (isCorrect) {
       trackEvent("answer_correct", { tool: "multiplication-quiz" });
-      if (soundEnabled) {
+      if (speechEnabled) {
         playCorrectSound();
-        // Speak the correct answer
+        // Speak the correct answer using hybrid audio system
         setTimeout(async () => {
-          await speakNumber(currentQuestion.answer);
+          await speakNumberWithAudio(currentQuestion.answer);
         }, 300);
       }
     } else {
       trackEvent("answer_wrong", { tool: "multiplication-quiz" });
-      if (soundEnabled) {
+      if (speechEnabled) {
         playWrongSound();
-        // Speak the correct answer
+        // Speak the correct answer using hybrid audio system
         setTimeout(async () => {
-          await speakNumber(currentQuestion.answer);
+          await speakNumberWithAudio(currentQuestion.answer);
         }, 500);
       }
     }
@@ -136,11 +159,11 @@ export default function MultiplicationQuiz({
         if (soundEnabled && questions[currentIndex + 1]) {
           setTimeout(async () => {
             const nextQuestion = questions[currentIndex + 1];
-            await speakNumber(nextQuestion.a);
+            await speakNumberWithAudio(nextQuestion.a);
             setTimeout(async () => {
-              await speakOperation("multiply");
+              await speakOperationWithAudio("multiply");
               setTimeout(async () => {
-                await speakNumber(nextQuestion.b);
+                await speakNumberWithAudio(nextQuestion.b);
               }, 300);
             }, 300);
           }, 300);
@@ -197,25 +220,73 @@ export default function MultiplicationQuiz({
     }
   }, [isStarted, isFinished, timeStarted]);
 
+  // Show empty state if no tables available for this grade
+  if (availableTables.length === 0) {
+    return (
+      <div className="space-y-6">
+        <SpeechToggleButton position="top-right" showLabel={true} />
+        <div className="text-center py-12">
+          <p className="text-xl text-gray-600 mb-4">
+            <SpeakableText
+              text="لا توجد جداول ضرب متاحة لهذا الصف الدراسي."
+              showButton={false}
+              clickable={true}
+              className="block"
+            />
+          </p>
+          <p className="text-gray-500">
+            <SpeakableText
+              text="اختبار جدول الضرب متاح من الصف الثاني الابتدائي فما فوق."
+              showButton={false}
+              clickable={true}
+              className="block"
+            />
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Not started
   if (!isStarted) {
     return (
       <div className="text-center space-y-6">
+        <SpeechToggleButton position="top-right" showLabel={true} />
         <div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-4">اختبار جدول الضرب</h3>
+          <h3 className="text-2xl font-bold text-gray-900 mb-4">
+            <SpeakableText
+              text="اختبار جدول الضرب"
+              showButton={false}
+              clickable={true}
+              className="block"
+            />
+          </h3>
           <p className="text-gray-600 mb-6">
-            {mode === "quick"
-              ? "اختبار سريع: 5 أسئلة"
-              : "اختبار كامل: 10 أسئلة"}
+            <SpeakableText
+              text={mode === "quick" ? "اختبار سريع: 5 أسئلة" : "اختبار كامل: 10 أسئلة"}
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="block"
+            />
           </p>
           <div className="bg-primary-50 border-r-4 border-primary-500 p-4 rounded-lg mb-6 text-right">
             <p className="text-primary-900">
-              💡 <strong>نصيحة:</strong> خذ وقتك في التفكير، الإجابات الصحيحة أهم من السرعة
+              💡 <SpeakableText
+                text="نصيحة: خذ وقتك في التفكير، الإجابات الصحيحة أهم من السرعة"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </p>
           </div>
         </div>
         <button onClick={startQuiz} className="btn-primary text-lg px-8 py-4">
-          ابدأ الاختبار
+          <SpeakableText
+            text="ابدأ الاختبار"
+            showButton={false}
+            clickable={true}
+            className="inline"
+          />
         </button>
       </div>
     );
@@ -228,14 +299,25 @@ export default function MultiplicationQuiz({
 
     return (
       <div className="space-y-6">
+        <SpeechToggleButton position="top-right" showLabel={true} />
         {/* Progress bar */}
         <div>
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium text-gray-700">
-              السؤال {currentIndex + 1} من {questions.length}
+              <SpeakableText
+                text={`السؤال ${currentIndex + 1} من ${questions.length}`}
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
             </span>
             <span className="text-sm font-medium text-gray-700">
-              الوقت: {Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, "0")}
+              <SpeakableText
+                text={`الوقت: ${Math.floor(timeElapsed / 60)}:${(timeElapsed % 60).toString().padStart(2, "0")}`}
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
@@ -248,24 +330,14 @@ export default function MultiplicationQuiz({
 
         {/* Question */}
         <div className="text-center bg-white rounded-xl shadow-lg p-8">
-          <button
-            onClick={async () => {
-              if (soundEnabled) {
-                await speakNumber(currentQuestion.a);
-                setTimeout(async () => {
-                  await speakOperation("multiply");
-                  setTimeout(async () => {
-                    await speakNumber(currentQuestion.b);
-                  }, 300);
-                }, 300);
-              }
-            }}
-            className="mb-8"
-          >
-            <p className="text-4xl md:text-5xl font-bold text-primary-600 hover:text-primary-700 transition-colors cursor-pointer">
-              {currentQuestion.a} × {currentQuestion.b} = ?
-            </p>
-          </button>
+          <div className="mb-8">
+            <SpeakableText
+              text={`${currentQuestion.a} × ${currentQuestion.b} = ?`}
+              showButton={speechEnabled}
+              buttonPosition="inline"
+              className="text-4xl md:text-5xl font-bold text-primary-600 hover:text-primary-700 transition-colors cursor-pointer"
+            />
+          </div>
           <div className="flex gap-4 justify-center items-center">
             <input
               type="number"
@@ -277,7 +349,12 @@ export default function MultiplicationQuiz({
               autoFocus
             />
             <button onClick={handleAnswer} className="btn-primary text-lg px-8 py-4">
-              تأكيد
+              <SpeakableText
+                text="تأكيد"
+                showButton={false}
+                clickable={true}
+                className="inline"
+              />
             </button>
           </div>
         </div>
@@ -285,7 +362,12 @@ export default function MultiplicationQuiz({
         {/* Score so far */}
         <div className="bg-gray-100 rounded-lg p-4 text-center">
           <p className="text-lg text-gray-700">
-            النتيجة حتى الآن: {score.correct} / {score.total}
+            <SpeakableText
+              text={`النتيجة حتى الآن: ${score.correct} / ${score.total}`}
+              showButton={false}
+              clickable={true}
+              className="block"
+            />
           </p>
         </div>
       </div>
@@ -300,8 +382,16 @@ export default function MultiplicationQuiz({
 
   return (
     <div className="space-y-6">
+      <SpeechToggleButton position="top-right" showLabel={true} />
       <div className="text-center bg-white rounded-xl shadow-lg p-8">
-        <h3 className="text-3xl font-bold text-gray-900 mb-4">انتهى الاختبار!</h3>
+        <h3 className="text-3xl font-bold text-gray-900 mb-4">
+          <SpeakableText
+            text="انتهى الاختبار!"
+            showButton={false}
+            clickable={true}
+            className="block"
+          />
+        </h3>
         
         <div className="mb-6">
           {isExcellent && (
@@ -327,23 +417,43 @@ export default function MultiplicationQuiz({
 
           <div className="bg-gray-100 rounded-lg p-4">
             <p className="text-gray-700">
-              الوقت المستغرق: {Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, "0")}
+              <SpeakableText
+                text={`الوقت المستغرق: ${Math.floor(timeElapsed / 60)}:${(timeElapsed % 60).toString().padStart(2, "0")}`}
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
             </p>
           </div>
 
           {isExcellent && (
             <p className="text-xl font-semibold text-green-600">
-              ممتاز! أنت متقن جدول الضرب 🎯
+              <SpeakableText
+                text="ممتاز! أنت متقن جدول الضرب 🎯"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
             </p>
           )}
           {isGood && !isExcellent && (
             <p className="text-xl font-semibold text-blue-600">
-              جيد جداً! استمر في الممارسة 💪
+              <SpeakableText
+                text="جيد جداً! استمر في الممارسة 💪"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
             </p>
           )}
           {needsPractice && (
             <p className="text-xl font-semibold text-orange-600">
-              تحتاج لمزيد من الممارسة. لا تقلق، استمر في المحاولة! 🌟
+              <SpeakableText
+                text="تحتاج لمزيد من الممارسة. لا تقلق، استمر في المحاولة! 🌟"
+                showButton={false}
+                clickable={true}
+                className="block"
+              />
             </p>
           )}
         </div>
@@ -352,7 +462,14 @@ export default function MultiplicationQuiz({
       {/* Review wrong answers */}
       {questions.some((q) => !q.isCorrect) && (
         <div className="bg-orange-50 border-r-4 border-orange-500 p-6 rounded-lg">
-          <h4 className="text-lg font-bold text-gray-900 mb-4">مراجعة الإجابات الخاطئة:</h4>
+          <h4 className="text-lg font-bold text-gray-900 mb-4">
+            <SpeakableText
+              text="مراجعة الإجابات الخاطئة:"
+              showButton={false}
+              clickable={true}
+              className="block"
+            />
+          </h4>
           <div className="space-y-2">
             {questions
               .filter((q) => !q.isCorrect)
@@ -375,7 +492,12 @@ export default function MultiplicationQuiz({
 
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
         <button onClick={resetQuiz} className="btn-primary">
-          اختبار جديد
+          <SpeakableText
+            text="اختبار جديد"
+            showButton={false}
+            clickable={true}
+            className="inline"
+          />
         </button>
       </div>
     </div>

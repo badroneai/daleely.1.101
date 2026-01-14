@@ -2,10 +2,14 @@
 
 import { useState, useEffect } from "react";
 import MentalMathAddSub from "./MentalMathAddSub";
-import { setSoundEnabled as setGlobalSoundEnabled } from "@/lib/sounds";
+import { getUserSpeechSettings } from "@/lib/audio/speech-settings";
+import type { GradeLevel } from "@/lib/types";
 
-export default function MentalMathAddSubClient() {
-  const [gradeLevel, setGradeLevel] = useState<"1-2" | "3-4" | "5-6" | "all">("1-2");
+interface MentalMathAddSubClientProps {
+  grade: GradeLevel | "all";
+}
+
+export default function MentalMathAddSubClient({ grade }: MentalMathAddSubClientProps) {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [mode, setMode] = useState<"quick" | "full">("quick");
 
@@ -13,34 +17,16 @@ export default function MentalMathAddSubClient() {
   useEffect(() => {
     const isMobile = window.innerWidth < 768;
     setMode(isMobile ? "quick" : "full");
+    
+    // Initialize soundEnabled from speech settings
+    const settings = getUserSpeechSettings();
+    setSoundEnabled(settings.enabled);
   }, []);
 
   return (
     <div className="mb-4">
-      <div className="flex flex-wrap gap-4 items-center justify-between mb-4">
-        <select
-          value={gradeLevel}
-          onChange={(e) => setGradeLevel(e.target.value as any)}
-          className="input-field w-auto min-w-[120px]"
-        >
-          <option value="1-2">الصف 1-2</option>
-          <option value="3-4">الصف 3-4</option>
-          <option value="5-6">الصف 5-6</option>
-          <option value="all">جميع المراحل</option>
-        </select>
-        <button
-          onClick={() => {
-            const newState = !soundEnabled;
-            setSoundEnabled(newState);
-            setGlobalSoundEnabled(newState);
-          }}
-          className={`btn-secondary text-sm ${soundEnabled ? "bg-primary-100" : ""}`}
-        >
-          {soundEnabled ? "🔊 الصوت مفعّل" : "🔇 الصوت معطّل"}
-        </button>
-      </div>
       <MentalMathAddSub
-        gradeLevel={gradeLevel}
+        grade={grade}
         soundEnabled={soundEnabled}
         mode={mode}
       />
