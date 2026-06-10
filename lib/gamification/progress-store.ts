@@ -118,3 +118,15 @@ export function useToolProgress(slug: string): ToolProgress {
     () => EMPTY_TOOL
   );
 }
+
+const EMPTY_ALL: AllProgress = Object.freeze({});
+
+/** Total stars earned across every tool. */
+export function totalStarsAcross(all: AllProgress): number {
+  return Object.values(all).reduce((sum, t) => sum + (t.totalStars || 0), 0);
+}
+
+/** Whole-store progress (all tools), read SSR-safely. */
+export function useAllProgress(): AllProgress {
+  return useSyncExternalStore(subscribe, loadAll, () => EMPTY_ALL);
+}

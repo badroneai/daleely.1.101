@@ -12,6 +12,12 @@ export default function Header() {
             Daleely.ai
           </Link>
           <div className="flex flex-wrap gap-3 md:gap-4">
+            <Link
+              href="/progress"
+              className="text-amber-600 hover:text-amber-700 font-semibold transition-all duration-200 px-2 py-2 min-h-[44px] flex items-center rounded-md hover:bg-amber-50 focus-visible-ring"
+            >
+              ⭐ نجومي
+            </Link>
             <Link 
               href="/student" 
               className="text-gray-700 hover:text-primary-600 font-medium transition-all duration-200 px-2 py-2 min-h-[44px] flex items-center rounded-md hover:bg-primary-50 focus-visible-ring"
