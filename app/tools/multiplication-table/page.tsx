@@ -55,12 +55,13 @@ const relatedArticles = [
 ];
 
 interface PageProps {
-  searchParams: { grade?: string };
+  searchParams: Promise<{ grade?: string }>;
 }
 
-export default function MultiplicationTablePage({ searchParams }: PageProps) {
+export default async function MultiplicationTablePage({ searchParams }: PageProps) {
   // قراءة grade من query params، مع fallback إلى "all" إذا لم يكن موجوداً
-  const grade = (searchParams.grade as GradeLevel | undefined) || "all";
+  const { grade: gradeParam } = await searchParams;
+  const grade = (gradeParam as GradeLevel | undefined) || "all";
 
   return (
     <PageLayout

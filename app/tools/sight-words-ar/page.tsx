@@ -53,12 +53,13 @@ const relatedArticles: Array<{ slug: string; title: string }> = [
 ];
 
 interface PageProps {
-  searchParams: { grade?: string };
+  searchParams: Promise<{ grade?: string }>;
 }
 
-export default function SightWordsArPage({ searchParams }: PageProps) {
+export default async function SightWordsArPage({ searchParams }: PageProps) {
   // قراءة grade من query params، مع fallback إلى "all" إذا لم يكن موجوداً
-  const grade = (searchParams.grade as GradeLevel | undefined) || "all";
+  const { grade: gradeParam } = await searchParams;
+  const grade = (gradeParam as GradeLevel | undefined) || "all";
 
   return (
     <PageLayout
