@@ -58,6 +58,11 @@ export const toolVisibilityRules: Record<string, ToolVisibility> = {
     maxGrade: "grade5",
     defaultHiddenForGrades: ["grade6", "grade7", "grade8", "grade9"],
   },
+  "fractions": {
+    minGrade: "grade3",
+    maxGrade: "grade6",
+    defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
+  },
 
   // أدوات اللغة العربية
   "arabic-letters": {
@@ -124,6 +129,23 @@ export const placeValueScope: Record<GradeLevel | "all", { digits: number }> = {
   grade8: { digits: 5 },
   grade9: { digits: 5 },
   all: { digits: 4 },
+};
+
+// الكسور: المقامات المتاحة حسب الصف
+export const fractionsScope: Record<GradeLevel | "all", { dens: number[] }> = {
+  kg1: { dens: [] },
+  kg2: { dens: [] },
+  kg3: { dens: [] },
+  grade1: { dens: [] },
+  grade2: { dens: [] },
+  grade3: { dens: [2, 3, 4, 6, 8] },
+  grade4: { dens: [2, 3, 4, 5, 6, 8, 10] },
+  grade5: { dens: [2, 3, 4, 5, 6, 8, 10] },
+  grade6: { dens: [2, 3, 4, 5, 6, 8, 10, 12] },
+  grade7: { dens: [2, 3, 4, 5, 6, 8, 10, 12] },
+  grade8: { dens: [2, 3, 4, 5, 6, 8, 10, 12] },
+  grade9: { dens: [2, 3, 4, 5, 6, 8, 10, 12] },
+  all: { dens: [2, 3, 4, 6, 8] },
 };
 
 // اختبار الضرب: نطاق الأسئلة حسب الصف
@@ -209,6 +231,8 @@ export function getToolScope(toolSlug: string, grade: GradeLevel | "all"): any {
       return multiplicationTableScope[grade] || multiplicationTableScope.all;
     case "place-value":
       return placeValueScope[grade] || placeValueScope.all;
+    case "fractions":
+      return fractionsScope[grade] || fractionsScope.all;
     case "multiplication-quiz":
       return multiplicationQuizScope[grade] || multiplicationQuizScope.all;
     case "mental-math-add-sub":

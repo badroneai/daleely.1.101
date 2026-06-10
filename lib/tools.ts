@@ -73,6 +73,16 @@ export const tools: Tool[] = [
     scopeByGrade: createScopeByGrade("place-value"),
   },
   {
+    slug: "fractions",
+    title: "الكسور",
+    description: "تعلّم الكسور البسيطة: تمثيل الجزء الملوّن، البسط والمقام، ومقارنة الكسور بتمارين تفاعلية",
+    category: "math",
+    gradeLevel: "all",
+    keywords: ["الكسور", "البسط", "المقام", "الأجزاء المتكافئة", "النصف", "الربع", "الثلث"],
+    visibility: toolVisibilityRules["fractions"],
+    scopeByGrade: createScopeByGrade("fractions"),
+  },
+  {
     slug: "arabic-letters",
     title: "تعلم الحروف العربية",
     description: "تعرف على الحروف العربية مع أشكالها وأصواتها",
