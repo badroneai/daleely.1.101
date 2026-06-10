@@ -1,54 +1,61 @@
 import Link from "next/link";
 import PageLayout from "@/components/PageLayout";
 import ContinueLearning from "@/components/ContinueLearning";
+import Mascot from "@/components/home/Mascot";
+
+const sections = [
+  { href: "/student", emoji: "🎒", title: "اختر صفك", desc: "ابدأ التعلّم بأدوات صفك", grad: "from-orange-600 to-rose-600" },
+  { href: "/math", emoji: "🔢", title: "رياضيات", desc: "ضرب، جمع، كسور وأكثر", grad: "from-sky-600 to-blue-700" },
+  { href: "/arabic", emoji: "📚", title: "عربي", desc: "حروف، حركات، كلمات", grad: "from-emerald-600 to-teal-700" },
+  { href: "/teachers", emoji: "👩‍🏫", title: "للمعلمين", desc: "أوراق عمل وأنشطة", grad: "from-violet-600 to-indigo-700" },
+  { href: "/parents", emoji: "👨‍👩‍👧‍👦", title: "لأولياء الأمور", desc: "إرشادات للتعلّم المنزلي", grad: "from-pink-600 to-rose-700" },
+];
 
 export default function Home() {
   return (
     <PageLayout>
-      <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-          مختبر الأدوات التعليمية
-        </h1>
-        <p className="text-xl text-gray-600 mb-8">
-          أدوات تفاعلية مجانية لمساعدة أطفالك في تعلم الرياضيات واللغة العربية
-        </p>
-        <Link href="/student" className="btn-primary inline-block">
-          ابدأ الآن
-        </Link>
-      </div>
-
       <ContinueLearning />
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
-        <Link href="/student" className="card text-center hover:border-primary-300 transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up">
-          <div className="text-4xl mb-4">🎓</div>
-          <h2 className="text-xl font-bold mb-2">الطالب</h2>
-          <p className="text-gray-600">اختر صفك وابدأ التعلم مع الأدوات المناسبة لك</p>
+      {/* Hero */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-500 via-indigo-500 to-violet-600 px-6 py-10 sm:py-14 text-center text-white shadow-xl mb-12">
+        <div aria-hidden="true" className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-12 -left-8 h-48 w-48 rounded-full bg-white/10" />
+        <Mascot className="mx-auto mb-4 h-24 w-24 drop-shadow animate-float" />
+        <h1 className="text-3xl sm:text-5xl font-extrabold mb-3">أهلًا بك في دليلي!</h1>
+        <p className="text-lg sm:text-xl text-white/95 mb-7 max-w-xl mx-auto">
+          تعلّم الرياضيات والعربية باللعب — اجمع النجوم وأنت تتعلّم! 🌟
+        </p>
+        <Link
+          href="/student"
+          className="inline-block rounded-full bg-white text-indigo-700 font-bold text-lg px-8 py-4 shadow-lg hover:scale-105 active:scale-95 transition-transform focus-visible-ring"
+        >
+          ابدأ اللعب والتعلّم 🚀
         </Link>
-        
-        <Link href="/math" className="card text-center hover:border-primary-300 transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up" style={{ animationDelay: "0.1s" }}>
-          <div className="text-4xl mb-4">🔢</div>
-          <h2 className="text-xl font-bold mb-2">رياضيات</h2>
-          <p className="text-gray-600">جدول الضرب، الجمع، الطرح، وأكثر</p>
-        </Link>
-        
-        <Link href="/arabic" className="card text-center hover:border-primary-300 transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up" style={{ animationDelay: "0.2s" }}>
-          <div className="text-4xl mb-4">📚</div>
-          <h2 className="text-xl font-bold mb-2">عربي</h2>
-          <p className="text-gray-600">الحروف، الأصوات، الحركات</p>
-        </Link>
-        
-        <Link href="/teachers" className="card text-center hover:border-primary-300 transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up" style={{ animationDelay: "0.3s" }}>
-          <div className="text-4xl mb-4">👩‍🏫</div>
-          <h2 className="text-xl font-bold mb-2">للمعلمين</h2>
-          <p className="text-gray-600">مولّد أوراق العمل والأنشطة</p>
-        </Link>
-        
-        <Link href="/parents" className="card text-center hover:border-primary-300 transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up" style={{ animationDelay: "0.4s" }}>
-          <div className="text-4xl mb-4">👨‍👩‍👧‍👦</div>
-          <h2 className="text-xl font-bold mb-2">لأولياء الأمور</h2>
-          <p className="text-gray-600">إرشادات ونصائح للتعلم المنزلي</p>
-        </Link>
+      </section>
+
+      {/* Sections */}
+      <h2 className="text-2xl font-bold text-gray-900 mb-5 text-center">اختر ركنك</h2>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        {sections.map((s, i) => (
+          <Link
+            key={s.href}
+            href={s.href}
+            className={`group rounded-3xl bg-gradient-to-br ${s.grad} p-5 sm:p-6 text-white shadow-lg hover:shadow-2xl hover:-translate-y-1 active:translate-y-0 transition-all focus-visible-ring slide-up`}
+            style={{ animationDelay: `${i * 0.08}s` }}
+          >
+            <div className="text-4xl sm:text-5xl mb-3 transition-transform group-hover:scale-110">{s.emoji}</div>
+            <h3 className="text-lg sm:text-xl font-extrabold mb-1">{s.title}</h3>
+            <p className="text-white text-sm">{s.desc}</p>
+          </Link>
+        ))}
+      </div>
+
+      {/* Trust strip */}
+      <div className="mt-12 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-600 font-medium">
+        <span>✓ مجاني بالكامل</span>
+        <span>✓ بدون تسجيل</span>
+        <span>✓ آمن للأطفال</span>
+        <span>✓ يعمل على الجوال والآيباد</span>
       </div>
     </PageLayout>
   );
