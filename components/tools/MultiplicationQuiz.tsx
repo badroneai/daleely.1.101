@@ -1,504 +1,241 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { trackEvent } from "@/lib/analytics";
-import { playCorrectSound, playWrongSound, playCompleteSound } from "@/lib/sounds";
-import { speakNumber, speakOperation, setSpeechEnabled, isSpeechEnabled } from "@/lib/speech";
-import { speakNumberWithAudio, speakOperationWithAudio } from "@/lib/audio/audio-player";
-import SpeechToggleButton from "@/components/audio/SpeechToggleButton";
-import SpeakableText from "@/components/audio/SpeakableText";
+// Multiplication-quiz tool — rebuilt to the Tool Playbook (Batch 2).
+//
+// Extends beyond multiplication to the book skill "حقائق الضرب والقسمة
+// المترابطة" (fact families): a 10-question quiz mixing multiplication,
+// division, and fact-family questions, with a results screen that reviews
+// mistakes and explains the relationship. Reuses the playbook primitives.
+
+import { useRef, useState, useEffect, useMemo } from "react";
 import { getToolScope } from "@/lib/CURRICULUM_MATRIX";
+import { trackEvent } from "@/lib/analytics";
+import { useSpeechEnabled } from "@/lib/audio/speech-enabled-store";
+import { useToolProgress, recordResult } from "@/lib/gamification/progress-store";
+import { speakSequence } from "@/lib/audio/speak-sequence";
+import { toArabicDigits } from "@/lib/tools/multiplication/engine";
+import { generateQuiz, type QuizQuestion, type QuizScope } from "@/lib/tools/multiplication/quiz-engine";
 import type { GradeLevel } from "@/lib/types";
+
+const SLUG = "multiplication-quiz";
+const QUIZ_LENGTH = 10;
 
 interface MultiplicationQuizProps {
   grade: GradeLevel | "all";
-  soundEnabled: boolean;
-  mode: "quick" | "full";
 }
 
-interface Question {
-  a: number;
-  b: number;
-  answer: number;
-  userAnswer?: number;
-  isCorrect?: boolean;
-}
+type Phase = "intro" | "quiz" | "result";
 
-export default function MultiplicationQuiz({
-  grade,
-  soundEnabled,
-  mode,
-}: MultiplicationQuizProps) {
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [userAnswer, setUserAnswer] = useState<string>("");
-  const [isStarted, setIsStarted] = useState(false);
-  const [isFinished, setIsFinished] = useState(false);
-  const [score, setScore] = useState({ correct: 0, total: 0 });
-  const [timeStarted, setTimeStarted] = useState<number | null>(null);
-  const [timeElapsed, setTimeElapsed] = useState(0);
-  const [speechEnabled, setSpeechEnabledState] = useState(false);
-
-  // Sync with global speech enabled state
-  useEffect(() => {
-    setSpeechEnabledState(isSpeechEnabled());
-    const interval = setInterval(() => {
-      setSpeechEnabledState(isSpeechEnabled());
-    }, 200);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Get available tables and difficulty from scopeByGrade
-  const { availableTables, difficulty } = useMemo(() => {
-    const scope = getToolScope("multiplication-quiz", grade);
-    const tables: number[] = scope && typeof scope === "object" && "tables" in scope 
-      ? (scope.tables as number[]) 
-      : [];
-    const diff: "easy" | "medium" | "hard" = scope && typeof scope === "object" && "difficulty" in scope
-      ? (scope.difficulty as "easy" | "medium" | "hard")
-      : "medium";
-    return { availableTables: tables, difficulty: diff };
+export default function MultiplicationQuiz({ grade }: MultiplicationQuizProps) {
+  const scope = useMemo<QuizScope>(() => {
+    const s = getToolScope(SLUG, grade);
+    return s && Array.isArray(s.tables) ? s : { tables: [], difficulty: "easy" };
   }, [grade]);
 
-  const generateQuestions = (count: number = 10): Question[] => {
-    if (availableTables.length === 0) {
-      return [];
-    }
-    
-    const newQuestions: Question[] = [];
+  const [speechEnabled, setSpeechEnabled] = useSpeechEnabled();
+  const progress = useToolProgress(SLUG);
 
-    for (let i = 0; i < count; i++) {
-      const a = availableTables[Math.floor(Math.random() * availableTables.length)];
-      // Adjust max multiplier based on difficulty
-      const maxB = difficulty === "easy" ? 10 : difficulty === "medium" ? 12 : 15;
-      const b = Math.floor(Math.random() * maxB) + 1;
-      newQuestions.push({
-        a,
-        b,
-        answer: a * b,
-      });
-    }
+  const [phase, setPhase] = useState<Phase>("intro");
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [index, setIndex] = useState(0);
+  const [answer, setAnswer] = useState("");
+  const [feedback, setFeedback] = useState<{ correct: boolean } | null>(null);
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [wrong, setWrong] = useState<QuizQuestion[]>([]);
 
-    return newQuestions;
+  const speechAbort = useRef<AbortController | null>(null);
+  useEffect(() => () => speechAbort.current?.abort(), []);
+
+  const speak = (q: QuizQuestion, includeAnswer = false) => {
+    speechAbort.current?.abort();
+    if (!speechEnabled) return;
+    const controller = new AbortController();
+    speechAbort.current = controller;
+    const steps = includeAnswer
+      ? [{ type: "number" as const, value: q.answer }]
+      : [{ type: "pause" as const, ms: 250 }, ...q.speech];
+    void speakSequence(steps, controller.signal);
   };
 
-  const startQuiz = () => {
-    const questionCount = mode === "quick" ? 5 : 10;
-    const newQuestions = generateQuestions(questionCount);
-    setQuestions(newQuestions);
-    setCurrentIndex(0);
-    setIsStarted(true);
-    setIsFinished(false);
-    setScore({ correct: 0, total: 0 });
-    setUserAnswer("");
-    setTimeStarted(Date.now());
-    trackEvent("start_training", { tool: "multiplication-quiz" });
-    
-    // Speak the first question
-    if (speechEnabled && newQuestions.length > 0) {
-      setTimeout(async () => {
-        const firstQuestion = newQuestions[0];
-        await speakNumberWithAudio(firstQuestion.a);
-        setTimeout(async () => {
-          await speakOperationWithAudio("multiply");
-          setTimeout(async () => {
-            await speakNumberWithAudio(firstQuestion.b);
-          }, 300);
-        }, 300);
-      }, 300);
-    }
+  const start = () => {
+    const qs = generateQuiz(scope, QUIZ_LENGTH);
+    setQuestions(qs);
+    setIndex(0);
+    setAnswer("");
+    setFeedback(null);
+    setScore(0);
+    setStreak(0);
+    setWrong([]);
+    setPhase("quiz");
+    trackEvent("start_training", { tool: SLUG });
+    if (qs[0]) speak(qs[0]);
   };
 
-  const handleAnswer = () => {
-    if (!userAnswer || currentIndex >= questions.length) return;
+  const current = questions[index];
 
-    const userNum = parseInt(userAnswer);
-    const currentQuestion = questions[currentIndex];
-    const isCorrect = userNum === currentQuestion.answer;
-
-    const updatedQuestions = [...questions];
-    updatedQuestions[currentIndex] = {
-      ...currentQuestion,
-      userAnswer: userNum,
-      isCorrect,
-    };
-    setQuestions(updatedQuestions);
-
-    setScore((prev) => ({
-      correct: prev.correct + (isCorrect ? 1 : 0),
-      total: prev.total + 1,
-    }));
-
-    if (isCorrect) {
-      trackEvent("answer_correct", { tool: "multiplication-quiz" });
-      if (speechEnabled) {
-        playCorrectSound();
-        // Speak the correct answer using hybrid audio system
-        setTimeout(async () => {
-          await speakNumberWithAudio(currentQuestion.answer);
-        }, 300);
-      }
-    } else {
-      trackEvent("answer_wrong", { tool: "multiplication-quiz" });
-      if (speechEnabled) {
-        playWrongSound();
-        // Speak the correct answer using hybrid audio system
-        setTimeout(async () => {
-          await speakNumberWithAudio(currentQuestion.answer);
-        }, 500);
-      }
-    }
-
-    // Move to next question or finish
-    if (currentIndex < questions.length - 1) {
-      setTimeout(() => {
-        setCurrentIndex(currentIndex + 1);
-        setUserAnswer("");
-        
-        // Speak the next question
-        if (soundEnabled && questions[currentIndex + 1]) {
-          setTimeout(async () => {
-            const nextQuestion = questions[currentIndex + 1];
-            await speakNumberWithAudio(nextQuestion.a);
-            setTimeout(async () => {
-              await speakOperationWithAudio("multiply");
-              setTimeout(async () => {
-                await speakNumberWithAudio(nextQuestion.b);
-              }, 300);
-            }, 300);
-          }, 300);
-        }
-      }, 2000);
-    } else {
-      setTimeout(() => {
-        finishQuiz();
-      }, 2000);
-    }
+  const check = () => {
+    if (!current || answer.trim() === "" || feedback) return;
+    const correct = Number(answer) === current.answer;
+    const nextStreak = correct ? streak + 1 : 0;
+    setStreak(nextStreak);
+    recordResult(SLUG, "quiz", correct, nextStreak);
+    if (correct) setScore((s) => s + 1);
+    else setWrong((w) => [...w, current]);
+    setFeedback({ correct });
+    trackEvent(correct ? "answer_correct" : "answer_wrong", { tool: SLUG });
+    speak(current, true);
   };
 
-  const finishQuiz = () => {
-    setIsFinished(true);
-    if (timeStarted) {
-      const elapsed = Math.floor((Date.now() - timeStarted) / 1000);
-      setTimeElapsed(elapsed);
+  const next = () => {
+    const ni = index + 1;
+    if (ni >= questions.length) {
+      speechAbort.current?.abort();
+      setPhase("result");
+      return;
     }
-    trackEvent("session_complete", {
-      tool: "multiplication-quiz",
-      score: score.correct,
-      total: score.total,
-    });
-    if (soundEnabled) {
-      playCompleteSound();
-    }
+    setIndex(ni);
+    setAnswer("");
+    setFeedback(null);
+    speak(questions[ni]);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleAnswer();
-    }
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter") return;
+    if (feedback) next();
+    else check();
   };
 
-  const resetQuiz = () => {
-    setIsStarted(false);
-    setIsFinished(false);
-    setQuestions([]);
-    setCurrentIndex(0);
-    setUserAnswer("");
-    setScore({ correct: 0, total: 0 });
-    setTimeStarted(null);
-    setTimeElapsed(0);
-  };
+  const SpeechToggle = (
+    <button
+      type="button"
+      onClick={() => setSpeechEnabled(!speechEnabled)}
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors focus-visible-ring"
+      aria-pressed={speechEnabled}
+      aria-label={speechEnabled ? "إيقاف النطق" : "تفعيل النطق"}
+    >
+      <span className="text-xl" aria-hidden="true">{speechEnabled ? "🔊" : "🔇"}</span>
+      <span>{speechEnabled ? "النطق مفعّل" : "النطق متوقّف"}</span>
+    </button>
+  );
 
-  // Timer effect
-  useEffect(() => {
-    if (isStarted && !isFinished && timeStarted) {
-      const interval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - timeStarted) / 1000);
-        setTimeElapsed(elapsed);
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [isStarted, isFinished, timeStarted]);
-
-  // Show empty state if no tables available for this grade
-  if (availableTables.length === 0) {
+  if (scope.tables.length === 0) {
     return (
-      <div className="space-y-6">
-        <SpeechToggleButton position="top-right" showLabel={true} />
-        <div className="text-center py-12">
-          <p className="text-xl text-gray-600 mb-4">
-            <SpeakableText
-              text="لا توجد جداول ضرب متاحة لهذا الصف الدراسي."
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </p>
-          <p className="text-gray-500">
-            <SpeakableText
-              text="اختبار جدول الضرب متاح من الصف الثاني الابتدائي فما فوق."
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </p>
-        </div>
+      <div className="text-center py-12">
+        <p className="text-xl text-gray-700 mb-2">لا يوجد اختبار ضرب متاح لهذا الصف الدراسي.</p>
+        <p className="text-gray-500">اختبار الضرب متاح من الصف الثاني الابتدائي فما فوق.</p>
       </div>
     );
   }
 
-  // Not started
-  if (!isStarted) {
+  if (phase === "intro") {
     return (
       <div className="text-center space-y-6">
-        <SpeechToggleButton position="top-right" showLabel={true} />
-        <div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-4">
-            <SpeakableText
-              text="اختبار جدول الضرب"
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </h3>
-          <p className="text-gray-600 mb-6">
-            <SpeakableText
-              text={mode === "quick" ? "اختبار سريع: 5 أسئلة" : "اختبار كامل: 10 أسئلة"}
-              showButton={speechEnabled}
-              buttonPosition="inline"
-              className="block"
-            />
-          </p>
-          <div className="bg-primary-50 border-r-4 border-primary-500 p-4 rounded-lg mb-6 text-right">
-            <p className="text-primary-900">
-              💡 <SpeakableText
-                text="نصيحة: خذ وقتك في التفكير، الإجابات الصحيحة أهم من السرعة"
-                showButton={false}
-                clickable={true}
-                className="inline"
-              />
-            </p>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-2 text-amber-700" aria-label={`مجموع نجومك ${toArabicDigits(progress.totalStars)}`}>
+            <span className="text-xl" aria-hidden="true">⭐</span>
+            <span className="font-bold">{toArabicDigits(progress.totalStars)}</span>
           </div>
+          {SpeechToggle}
         </div>
-        <button onClick={startQuiz} className="btn-primary text-lg px-8 py-4">
-          <SpeakableText
-            text="ابدأ الاختبار"
-            showButton={false}
-            clickable={true}
-            className="inline"
-          />
+        <p className="text-lg text-gray-700">
+          اختبار من {toArabicDigits(QUIZ_LENGTH)} أسئلة يجمع الضرب والقسمة وعائلات الحقائق المترابطة.
+        </p>
+        <button type="button" onClick={start} className="btn-primary text-lg px-8 py-4 focus-visible-ring">
+          ابدأ الاختبار
         </button>
       </div>
     );
   }
 
-  // Quiz in progress
-  if (isStarted && !isFinished) {
-    const currentQuestion = questions[currentIndex];
-    const progress = ((currentIndex + 1) / questions.length) * 100;
-
+  if (phase === "result") {
+    const pct = Math.round((score / questions.length) * 100);
+    const label = pct >= 90 ? "ممتاز! 🎉" : pct >= 70 ? "جيد جدًا 👍" : "تحتاج لمزيد من الممارسة 💪";
     return (
-      <div className="space-y-6">
-        <SpeechToggleButton position="top-right" showLabel={true} />
-        {/* Progress bar */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">
-              <SpeakableText
-                text={`السؤال ${currentIndex + 1} من ${questions.length}`}
-                showButton={false}
-                clickable={true}
-                className="block"
-              />
-            </span>
-            <span className="text-sm font-medium text-gray-700">
-              <SpeakableText
-                text={`الوقت: ${Math.floor(timeElapsed / 60)}:${(timeElapsed % 60).toString().padStart(2, "0")}`}
-                showButton={false}
-                clickable={true}
-                className="block"
-              />
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div
-              className="bg-primary-600 h-3 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-        </div>
-
-        {/* Question */}
-        <div className="text-center bg-white rounded-xl shadow-lg p-8">
-          <div className="mb-8">
-            <SpeakableText
-              text={`${currentQuestion.a} × ${currentQuestion.b} = ?`}
-              showButton={speechEnabled}
-              buttonPosition="inline"
-              className="text-4xl md:text-5xl font-bold text-primary-600 hover:text-primary-700 transition-colors cursor-pointer"
-            />
-          </div>
-          <div className="flex gap-4 justify-center items-center">
-            <input
-              type="number"
-              value={userAnswer}
-              onChange={(e) => setUserAnswer(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="input-field text-center text-3xl w-32"
-              placeholder="?"
-              autoFocus
-            />
-            <button onClick={handleAnswer} className="btn-primary text-lg px-8 py-4">
-              <SpeakableText
-                text="تأكيد"
-                showButton={false}
-                clickable={true}
-                className="inline"
-              />
-            </button>
-          </div>
-        </div>
-
-        {/* Score so far */}
-        <div className="bg-gray-100 rounded-lg p-4 text-center">
-          <p className="text-lg text-gray-700">
-            <SpeakableText
-              text={`النتيجة حتى الآن: ${score.correct} / ${score.total}`}
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
+      <div className="space-y-6" role="status" aria-live="polite">
+        <div className="text-center bg-white border-2 border-primary-500 rounded-xl p-6">
+          <p className="text-lg text-gray-600 mb-1">نتيجتك</p>
+          <p className="text-4xl font-bold text-gray-900">
+            {toArabicDigits(score)} / {toArabicDigits(questions.length)}
           </p>
+          <p className="text-xl font-semibold text-primary-700 mt-2">{label}</p>
+        </div>
+
+        {wrong.length > 0 && (
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 mb-3">راجع أخطاءك</h3>
+            <ul className="space-y-3">
+              {wrong.map((q, i) => (
+                <li key={i} className="card">
+                  <p className="font-semibold text-gray-900">{q.prompt}</p>
+                  <p className="text-green-700 mt-1">الإجابة الصحيحة: {toArabicDigits(q.answer)}</p>
+                  <p className="text-gray-600 text-sm mt-1 leading-relaxed">{q.hint}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="text-center">
+          <button type="button" onClick={start} className="btn-primary focus-visible-ring">أعد الاختبار</button>
         </div>
       </div>
     );
   }
 
-  // Quiz finished - show results
-  const percentage = Math.round((score.correct / score.total) * 100);
-  const isExcellent = percentage >= 90;
-  const isGood = percentage >= 70;
-  const needsPractice = percentage < 70;
-
+  // phase === "quiz"
   return (
     <div className="space-y-6">
-      <SpeechToggleButton position="top-right" showLabel={true} />
-      <div className="text-center bg-white rounded-xl shadow-lg p-8">
-        <h3 className="text-3xl font-bold text-gray-900 mb-4">
-          <SpeakableText
-            text="انتهى الاختبار!"
-            showButton={false}
-            clickable={true}
-            className="block"
-          />
-        </h3>
-        
-        <div className="mb-6">
-          {isExcellent && (
-            <div className="text-6xl mb-4">🎉</div>
-          )}
-          {isGood && !isExcellent && (
-            <div className="text-6xl mb-4">👍</div>
-          )}
-          {needsPractice && (
-            <div className="text-6xl mb-4">💪</div>
-          )}
-        </div>
-
-        <div className="space-y-4 mb-6">
-          <div>
-            <p className="text-5xl font-bold text-primary-600 mb-2">
-              {score.correct} / {score.total}
-            </p>
-            <p className="text-2xl font-semibold text-gray-700">
-              {percentage}%
-            </p>
-          </div>
-
-          <div className="bg-gray-100 rounded-lg p-4">
-            <p className="text-gray-700">
-              <SpeakableText
-                text={`الوقت المستغرق: ${Math.floor(timeElapsed / 60)}:${(timeElapsed % 60).toString().padStart(2, "0")}`}
-                showButton={false}
-                clickable={true}
-                className="block"
-              />
-            </p>
-          </div>
-
-          {isExcellent && (
-            <p className="text-xl font-semibold text-green-600">
-              <SpeakableText
-                text="ممتاز! أنت متقن جدول الضرب 🎯"
-                showButton={false}
-                clickable={true}
-                className="block"
-              />
-            </p>
-          )}
-          {isGood && !isExcellent && (
-            <p className="text-xl font-semibold text-blue-600">
-              <SpeakableText
-                text="جيد جداً! استمر في الممارسة 💪"
-                showButton={false}
-                clickable={true}
-                className="block"
-              />
-            </p>
-          )}
-          {needsPractice && (
-            <p className="text-xl font-semibold text-orange-600">
-              <SpeakableText
-                text="تحتاج لمزيد من الممارسة. لا تقلق، استمر في المحاولة! 🌟"
-                showButton={false}
-                clickable={true}
-                className="block"
-              />
-            </p>
-          )}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <span className="text-sm text-gray-500">
+          السؤال {toArabicDigits(index + 1)} من {toArabicDigits(questions.length)}
+        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-amber-700 font-semibold" aria-label={`السلسلة ${toArabicDigits(streak)}`}>🔥 {toArabicDigits(streak)}</span>
+          {SpeechToggle}
         </div>
       </div>
 
-      {/* Review wrong answers */}
-      {questions.some((q) => !q.isCorrect) && (
-        <div className="bg-orange-50 border-r-4 border-orange-500 p-6 rounded-lg">
-          <h4 className="text-lg font-bold text-gray-900 mb-4">
-            <SpeakableText
-              text="مراجعة الإجابات الخاطئة:"
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </h4>
-          <div className="space-y-2">
-            {questions
-              .filter((q) => !q.isCorrect)
-              .map((q, idx) => (
-                <div key={idx} className="text-gray-700">
-                  <span className="font-semibold">
-                    {q.a} × {q.b} = {q.answer}
-                  </span>
-                  {q.userAnswer !== undefined && (
-                    <span className="text-red-600">
-                      {" "}
-                      (إجابتك: {q.userAnswer})
-                    </span>
-                  )}
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
+      <div className="bg-white border-2 border-primary-500 rounded-xl p-6 text-center">
+        <p className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 leading-relaxed">{current?.prompt}</p>
 
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <button onClick={resetQuiz} className="btn-primary">
-          <SpeakableText
-            text="اختبار جديد"
-            showButton={false}
-            clickable={true}
-            className="inline"
+        <div className="flex gap-3 justify-center items-center">
+          <label htmlFor="quiz-answer" className="sr-only">إجابتك</label>
+          <input
+            id="quiz-answer"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value.replace(/[^0-9]/g, ""))}
+            onKeyDown={onKeyDown}
+            disabled={!!feedback}
+            className="input-field text-center text-3xl w-32"
+            placeholder="؟"
+            autoFocus
+            autoComplete="off"
           />
-        </button>
+          {!feedback ? (
+            <button type="button" onClick={check} className="btn-primary text-lg px-8 py-4 focus-visible-ring">تحقّق</button>
+          ) : (
+            <button type="button" onClick={next} className="btn-primary text-lg px-8 py-4 focus-visible-ring">
+              {index + 1 >= questions.length ? "النتيجة" : "التالي"}
+            </button>
+          )}
+        </div>
+
+        <div role="status" aria-live="polite" className="mt-5 min-h-[3rem]">
+          {feedback && (
+            <div className={feedback.correct ? "text-green-700" : "text-red-700"}>
+              <p className="text-xl font-bold">
+                {feedback.correct
+                  ? `✓ أحسنت! ${toArabicDigits(current!.answer)} صحيحة`
+                  : `✗ الإجابة الصحيحة: ${toArabicDigits(current!.answer)}`}
+              </p>
+              <p className="text-gray-700 mt-2 leading-relaxed">{current!.hint}</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
