@@ -53,7 +53,12 @@ export const toolVisibilityRules: Record<string, ToolVisibility> = {
     maxGrade: "grade6",
     defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
   },
-  
+  "place-value": {
+    minGrade: "grade1",
+    maxGrade: "grade5",
+    defaultHiddenForGrades: ["grade6", "grade7", "grade8", "grade9"],
+  },
+
   // أدوات اللغة العربية
   "arabic-letters": {
     minGrade: "kg1",
@@ -102,6 +107,23 @@ export const multiplicationTableScope: Record<GradeLevel | "all", number[]> = {
   grade8: [2, 3, 4, 5, 6, 7, 8, 9, 10],
   grade9: [2, 3, 4, 5, 6, 7, 8, 9, 10],
   all: [2, 3, 4, 5, 6, 7, 8, 9, 10],
+};
+
+// القيمة المنزلية: عدد منازل العدد حسب الصف
+export const placeValueScope: Record<GradeLevel | "all", { digits: number }> = {
+  kg1: { digits: 2 },
+  kg2: { digits: 2 },
+  kg3: { digits: 2 },
+  grade1: { digits: 2 },
+  grade2: { digits: 3 },
+  grade3: { digits: 4 },
+  grade4: { digits: 5 },
+  grade5: { digits: 5 },
+  grade6: { digits: 5 },
+  grade7: { digits: 5 },
+  grade8: { digits: 5 },
+  grade9: { digits: 5 },
+  all: { digits: 4 },
 };
 
 // اختبار الضرب: نطاق الأسئلة حسب الصف
@@ -185,6 +207,8 @@ export function getToolScope(toolSlug: string, grade: GradeLevel | "all"): any {
   switch (toolSlug) {
     case "multiplication-table":
       return multiplicationTableScope[grade] || multiplicationTableScope.all;
+    case "place-value":
+      return placeValueScope[grade] || placeValueScope.all;
     case "multiplication-quiz":
       return multiplicationQuizScope[grade] || multiplicationQuizScope.all;
     case "mental-math-add-sub":

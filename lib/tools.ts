@@ -63,6 +63,16 @@ export const tools: Tool[] = [
     scopeByGrade: createScopeByGrade("telling-time"),
   },
   {
+    slug: "place-value",
+    title: "القيمة المنزلية",
+    description: "تعلّم قيمة كل رقم في العدد: الآحاد والعشرات والمئات والألوف مع تمارين تفاعلية",
+    category: "math",
+    gradeLevel: "all",
+    keywords: ["القيمة المنزلية", "الآحاد", "العشرات", "المئات", "الألوف", "مقارنة الأعداد"],
+    visibility: toolVisibilityRules["place-value"],
+    scopeByGrade: createScopeByGrade("place-value"),
+  },
+  {
     slug: "arabic-letters",
     title: "تعلم الحروف العربية",
     description: "تعرف على الحروف العربية مع أشكالها وأصواتها",
