@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PageLayout from "@/components/PageLayout";
+import ContinueLearning from "@/components/ContinueLearning";
 
 export default function Home() {
   return (
@@ -15,6 +16,8 @@ export default function Home() {
           ابدأ الآن
         </Link>
       </div>
+
+      <ContinueLearning />
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
         <Link href="/student" className="card text-center hover:border-primary-300 transition-all duration-200 hover:scale-[1.02] transform focus-visible-ring slide-up">
