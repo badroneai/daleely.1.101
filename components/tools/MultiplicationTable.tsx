@@ -1,427 +1,260 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { trackEvent } from "@/lib/analytics";
-import { playCorrectSound, playWrongSound } from "@/lib/sounds";
-import { speakNumber, speakOperation, setSpeechEnabled, isSpeechEnabled } from "@/lib/speech";
-import { speakNumberWithAudio, speakOperationWithAudio } from "@/lib/audio/audio-player";
-import SpeechToggleButton from "@/components/audio/SpeechToggleButton";
-import SpeakableText from "@/components/audio/SpeakableText";
+// Multiplication tool — reference rebuild (Batch 1, Tool Playbook exemplar).
+//
+// Replaces the legacy random-drill version. It teaches with the book's
+// strategy-based levels (مفهوم → مرتكزات → الإبدال → بقية الحقائق → مسائل),
+// explains the WHY after every answer, and rewards mastery with stars/streaks.
+//
+// Standards demonstrated for the playbook:
+// - state from external stores via hooks (no setInterval polling, no
+//   set-state-in-effect): useSpeechEnabled, useToolProgress
+// - cancelable speech via AbortController + speakSequence (no setTimeout pyramids)
+// - randomness only in event handlers, never during render (react-hooks/purity)
+// - accessibility: aria-live feedback, labeled input, keyboard support
+
+import { useRef, useState, useEffect, useMemo } from "react";
 import { getToolScope } from "@/lib/CURRICULUM_MATRIX";
+import { trackEvent } from "@/lib/analytics";
+import { useSpeechEnabled } from "@/lib/audio/speech-enabled-store";
+import { useToolProgress, recordResult } from "@/lib/gamification/progress-store";
+import { speakSequence } from "@/lib/audio/speak-sequence";
+import {
+  availableLevels,
+  generateQuestion,
+  toArabicDigits,
+  type MultLevel,
+  type MultQuestion,
+} from "@/lib/tools/multiplication/engine";
 import type { GradeLevel } from "@/lib/types";
+
+const SLUG = "multiplication-table";
 
 interface MultiplicationTableProps {
   grade: GradeLevel | "all";
-  soundEnabled: boolean;
-  mode: "quick" | "full";
 }
 
-export default function MultiplicationTable({
-  grade,
-  soundEnabled,
-  mode,
-}: MultiplicationTableProps) {
-  const [selectedTable, setSelectedTable] = useState<number>(2);
-  const [isTraining, setIsTraining] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState<{
-    a: number;
-    b: number;
-    answer: number;
-  } | null>(null);
-  const [userAnswer, setUserAnswer] = useState<string>("");
-  const [score, setScore] = useState({ correct: 0, total: 0 });
-  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
-  const [speechEnabled, setSpeechEnabledState] = useState(false);
-
-  // Sync with global speech enabled state
-  useEffect(() => {
-    setSpeechEnabledState(isSpeechEnabled());
-    const interval = setInterval(() => {
-      setSpeechEnabledState(isSpeechEnabled());
-    }, 200);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Get available tables from scopeByGrade
-  const availableTables: number[] = useMemo(() => {
-    const scope = getToolScope("multiplication-table", grade);
-    return Array.isArray(scope) ? scope : [];
+export default function MultiplicationTable({ grade }: MultiplicationTableProps) {
+  const scope = useMemo<number[]>(() => {
+    const s = getToolScope(SLUG, grade);
+    return Array.isArray(s) ? s : [];
   }, [grade]);
-  
-  // Set default selected table to first available table
-  useEffect(() => {
-    if (availableTables.length > 0 && !availableTables.includes(selectedTable)) {
-      setSelectedTable(availableTables[0]);
-    }
-  }, [availableTables, selectedTable]);
+  const levels = useMemo(() => availableLevels(scope), [scope]);
 
-  const generateQuestion = () => {
-    const a = selectedTable;
-    const b = Math.floor(Math.random() * 12) + 1;
-    return {
-      a,
-      b,
-      answer: a * b,
-    };
+  const [speechEnabled, setSpeechEnabled] = useSpeechEnabled();
+  const progress = useToolProgress(SLUG);
+
+  const [level, setLevel] = useState<MultLevel | null>(null);
+  const [question, setQuestion] = useState<MultQuestion | null>(null);
+  const [answer, setAnswer] = useState("");
+  const [feedback, setFeedback] = useState<{ correct: boolean; hint: string } | null>(null);
+  const [streak, setStreak] = useState(0);
+
+  const speechAbort = useRef<AbortController | null>(null);
+
+  // Abort any in-flight speech on unmount.
+  useEffect(() => () => speechAbort.current?.abort(), []);
+
+  const speak = (q: MultQuestion) => {
+    speechAbort.current?.abort();
+    if (!speechEnabled) return;
+    const controller = new AbortController();
+    speechAbort.current = controller;
+    void speakSequence([{ type: "pause", ms: 250 }, ...q.speech], controller.signal);
   };
 
-  const startTraining = () => {
-    setIsTraining(true);
-    setScore({ correct: 0, total: 0 });
-    const question = generateQuestion();
-    setCurrentQuestion(question);
-    setUserAnswer("");
+  const startLevel = (lvl: MultLevel) => {
+    const q = generateQuestion(lvl, scope);
+    setLevel(lvl);
+    setQuestion(q);
+    setAnswer("");
     setFeedback(null);
-    trackEvent("start_training", { tool: "multiplication-table" });
-    
-    // Speak the question using hybrid audio system
+    setStreak(0);
+    trackEvent("start_training", { tool: SLUG, level: lvl.id });
+    speak(q);
+  };
+
+  const check = () => {
+    if (!question || !level || answer.trim() === "" || feedback) return;
+    const correct = Number(answer) === question.answer;
+    const nextStreak = correct ? streak + 1 : 0;
+    setStreak(nextStreak);
+    recordResult(SLUG, level.id, correct, nextStreak);
+    setFeedback({ correct, hint: question.hint });
+    trackEvent(correct ? "answer_correct" : "answer_wrong", { tool: SLUG, level: level.id });
     if (speechEnabled) {
-      setTimeout(async () => {
-        await speakNumberWithAudio(question.a);
-        setTimeout(async () => {
-          await speakOperationWithAudio("multiply");
-          setTimeout(async () => {
-            await speakNumberWithAudio(question.b);
-          }, 300);
-        }, 300);
-      }, 300);
+      speechAbort.current?.abort();
+      const controller = new AbortController();
+      speechAbort.current = controller;
+      void speakSequence([{ type: "number", value: question.answer }], controller.signal);
     }
   };
 
-  const handleAnswer = () => {
-    if (!currentQuestion || !userAnswer) return;
-
-    const userNum = parseInt(userAnswer);
-    const isCorrect = userNum === currentQuestion.answer;
-
-    setScore((prev) => ({
-      correct: prev.correct + (isCorrect ? 1 : 0),
-      total: prev.total + 1,
-    }));
-
-    if (isCorrect) {
-      trackEvent("answer_correct", { tool: "multiplication-table" });
-      setFeedback("correct");
-      if (speechEnabled) {
-        playCorrectSound();
-        // Speak the correct answer using hybrid audio system
-        setTimeout(async () => {
-          await speakNumberWithAudio(currentQuestion.answer);
-        }, 300);
-      }
-    } else {
-      trackEvent("answer_wrong", { tool: "multiplication-table" });
-      setFeedback("wrong");
-      if (speechEnabled) {
-        playWrongSound();
-        // Speak the correct answer using hybrid audio system
-        setTimeout(async () => {
-          await speakNumberWithAudio(currentQuestion.answer);
-        }, 500);
-      }
-    }
-
-    setTimeout(() => {
-      const nextQuestion = generateQuestion();
-      setCurrentQuestion(nextQuestion);
-      setUserAnswer("");
-      setFeedback(null);
-      
-      // Speak the next question using hybrid audio system
-      if (speechEnabled) {
-        setTimeout(async () => {
-          await speakNumberWithAudio(nextQuestion.a);
-          setTimeout(async () => {
-            await speakOperationWithAudio("multiply");
-            setTimeout(async () => {
-              await speakNumberWithAudio(nextQuestion.b);
-            }, 300);
-          }, 300);
-        }, 300);
-      }
-    }, 2000);
+  const next = () => {
+    if (!level) return;
+    const q = generateQuestion(level, scope);
+    setQuestion(q);
+    setAnswer("");
+    setFeedback(null);
+    speak(q);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleAnswer();
-    }
+  const exit = () => {
+    speechAbort.current?.abort();
+    setLevel(null);
+    setQuestion(null);
+    setFeedback(null);
   };
 
-  // Quick mode - single question at a time
-  if (mode === "quick" && isTraining) {
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter") return;
+    if (feedback) next();
+    else check();
+  };
+
+  const SpeechToggle = (
+    <button
+      type="button"
+      onClick={() => setSpeechEnabled(!speechEnabled)}
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors focus-visible-ring"
+      aria-pressed={speechEnabled}
+      aria-label={speechEnabled ? "إيقاف النطق" : "تفعيل النطق"}
+    >
+      <span className="text-xl" aria-hidden="true">{speechEnabled ? "🔊" : "🔇"}</span>
+      <span>{speechEnabled ? "النطق مفعّل" : "النطق متوقّف"}</span>
+    </button>
+  );
+
+  // No tables for this grade.
+  if (scope.length === 0) {
     return (
-      <div className="space-y-6">
-        <SpeechToggleButton position="top-right" showLabel={true} />
-        <div className="text-center">
-          <p className="text-2xl font-bold text-gray-900 mb-4">
-            <SpeakableText
-              text={`${currentQuestion?.a} × ${currentQuestion?.b} = ?`}
-              showButton={speechEnabled}
-              buttonPosition="inline"
-              className="block"
-            />
-          </p>
-          <div className="flex gap-4 justify-center items-center">
-            <input
-              type="number"
-              value={userAnswer}
-              onChange={(e) => setUserAnswer(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="input-field text-center text-3xl w-32"
-              placeholder="?"
-              autoFocus
-            />
-            <button onClick={handleAnswer} className="btn-primary text-lg px-8 py-4">
-              <SpeakableText
-                text="تحقق"
-                showButton={false}
-                clickable={true}
-                className="inline"
-              />
-            </button>
-          </div>
-          {feedback === "correct" && (
-            <p className="text-green-600 text-xl font-bold mt-4">
-              <SpeakableText
-                text="✓ صحيح! أحسنت"
-                showButton={false}
-                clickable={true}
-                className="block"
-              />
-            </p>
-          )}
-          {feedback === "wrong" && (
-            <p className="text-red-600 text-xl font-bold mt-4">
-              <SpeakableText
-                text={`✗ خطأ. الإجابة الصحيحة: ${currentQuestion?.answer}`}
-                showButton={false}
-                clickable={true}
-                className="block"
-              />
-            </p>
-          )}
-        </div>
-
-        <div className="bg-gray-100 rounded-lg p-4 text-center">
-          <p className="text-lg text-gray-700">
-            <SpeakableText
-              text={`النتيجة: ${score.correct} / ${score.total}`}
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </p>
-        </div>
-
-        <div className="flex gap-4 justify-center">
-          <button
-            onClick={() => {
-              setIsTraining(false);
-              setCurrentQuestion(null);
-            }}
-            className="btn-secondary"
-          >
-            <SpeakableText
-              text="إنهاء التدريب"
-              showButton={false}
-              clickable={true}
-              className="inline"
-            />
-          </button>
-        </div>
+      <div className="text-center py-12">
+        <p className="text-xl text-gray-700 mb-2">لا توجد جداول ضرب متاحة لهذا الصف الدراسي.</p>
+        <p className="text-gray-500">جدول الضرب متاح من الصف الثاني الابتدائي فما فوق.</p>
       </div>
     );
   }
 
-  // Show empty state if no tables available for this grade
-  if (availableTables.length === 0) {
+  // Level map.
+  if (!level) {
     return (
       <div className="space-y-6">
-        <SpeechToggleButton position="top-right" showLabel={true} />
-        <div className="text-center py-12">
-          <p className="text-xl text-gray-600 mb-4">
-            <SpeakableText
-              text="لا توجد جداول ضرب متاحة لهذا الصف الدراسي."
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </p>
-          <p className="text-gray-500">
-            <SpeakableText
-              text="جدول الضرب متاح من الصف الثاني الابتدائي فما فوق."
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </p>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-lg text-gray-700">اختر مستوى لتبدأ التدرّب بطريقة الكتاب خطوة بخطوة.</p>
+          {SpeechToggle}
         </div>
+
+        <div
+          className="flex items-center gap-2 text-amber-700 bg-amber-50 rounded-lg px-4 py-2 w-fit"
+          aria-label={`مجموع نجومك ${toArabicDigits(progress.totalStars)}`}
+        >
+          <span className="text-xl" aria-hidden="true">⭐</span>
+          <span className="font-bold">{toArabicDigits(progress.totalStars)}</span>
+          <span className="text-sm">نجمة</span>
+        </div>
+
+        <ul className="grid gap-4 sm:grid-cols-2">
+          {levels.map((lvl, i) => {
+            const lp = progress.levels[lvl.id];
+            return (
+              <li key={lvl.id}>
+                <button
+                  type="button"
+                  onClick={() => startLevel(lvl)}
+                  className="w-full text-right card hover:border-primary-300 transition-colors focus-visible-ring"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 mb-1">
+                        {toArabicDigits(i + 1)}. {lvl.title}
+                      </h3>
+                      <p className="text-sm text-gray-500">الاستراتيجية: {lvl.strategy}</p>
+                    </div>
+                    {lp?.mastered && (
+                      <span className="text-green-600 font-bold whitespace-nowrap" aria-label="مُتقَن">✓ مُتقَن</span>
+                    )}
+                  </div>
+                  {lp && lp.stars > 0 && (
+                    <p className="text-amber-600 text-sm mt-2">⭐ {toArabicDigits(lp.stars)}</p>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     );
   }
 
-  // Full mode - show full table
-  if (mode === "full") {
-    return (
-      <div className="space-y-6">
-        <SpeechToggleButton position="top-right" showLabel={true} />
-        <div className="flex flex-wrap gap-4 items-center justify-center mb-6">
-          <label className="text-lg font-medium text-gray-700">
-            <SpeakableText
-              text="اختر الجدول:"
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {availableTables.map((num) => (
-              <button
-                key={num}
-                onClick={() => {
-                  setSelectedTable(num);
-                  if (speechEnabled) {
-                    speakNumberWithAudio(num);
-                  }
-                }}
-                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                  selectedTable === num
-                    ? "bg-primary-600 text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
-              >
-                {num}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-          {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
-            <button
-              key={num}
-              onClick={() => {
-                if (speechEnabled) {
-                  speakNumberWithAudio(selectedTable * num);
-                }
-              }}
-              className="bg-white border-2 border-gray-200 rounded-lg p-4 text-center hover:border-primary-300 transition-colors"
-            >
-              <p className="text-sm text-gray-600 mb-1">{selectedTable} × {num}</p>
-              <p className="text-xl font-bold text-gray-900">{selectedTable * num}</p>
-            </button>
-          ))}
-        </div>
-
-        {!isTraining && (
-          <div className="text-center">
-            <button onClick={startTraining} className="btn-primary">
-              <SpeakableText
-                text="ابدأ التدريب"
-                showButton={false}
-                clickable={true}
-                className="inline"
-              />
-            </button>
-          </div>
-        )}
-
-        {isTraining && (
-          <div className="bg-white border-2 border-primary-500 rounded-lg p-6">
-            <p className="text-2xl font-bold text-gray-900 mb-4 text-center">
-              <SpeakableText
-                text={`${currentQuestion?.a} × ${currentQuestion?.b} = ?`}
-                showButton={speechEnabled}
-                buttonPosition="inline"
-                className="block"
-              />
-            </p>
-            <div className="flex gap-4 justify-center items-center">
-              <input
-                type="number"
-                value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="input-field text-center text-2xl w-32"
-                placeholder="?"
-                autoFocus
-              />
-              <button onClick={handleAnswer} className="btn-primary text-lg px-8 py-4">
-                <SpeakableText
-                  text="تحقق"
-                  showButton={false}
-                  clickable={true}
-                  className="inline"
-                />
-              </button>
-            </div>
-            {feedback === "correct" && (
-              <p className="text-green-600 text-xl font-bold mt-4 text-center">
-                <SpeakableText
-                  text="✓ صحيح! أحسنت"
-                  showButton={false}
-                  clickable={true}
-                  className="block"
-                />
-              </p>
-            )}
-            {feedback === "wrong" && (
-              <p className="text-red-600 text-xl font-bold mt-4 text-center">
-                <SpeakableText
-                  text={`✗ خطأ. الإجابة الصحيحة: ${currentQuestion?.answer}`}
-                  showButton={false}
-                  clickable={true}
-                  className="block"
-                />
-              </p>
-            )}
-            <div className="bg-gray-100 rounded-lg p-4 text-center mt-4">
-              <p className="text-lg text-gray-700">
-                <SpeakableText
-                  text={`النتيجة: ${score.correct} / ${score.total}`}
-                  showButton={false}
-                  clickable={true}
-                  className="block"
-                />
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Initial state - quick mode
+  // In-level play.
   return (
-    <div className="text-center space-y-6">
-      <SpeechToggleButton position="top-right" showLabel={true} />
-      <p className="text-lg text-gray-600">
-        <SpeakableText
-          text="اختر جدول الضرب الذي تريد التدرب عليه"
-          showButton={speechEnabled}
-          buttonPosition="inline"
-          className="block"
-        />
-      </p>
-      <div className="flex flex-wrap gap-3 justify-center">
-        {availableTables.map((num) => (
-          <button
-            key={num}
-            onClick={() => {
-              setSelectedTable(num);
-              startTraining();
-            }}
-            className="px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors text-lg"
-          >
-            <SpeakableText
-              text={`جدول ${num}`}
-              showButton={false}
-              clickable={true}
-              className="inline"
-            />
-          </button>
-        ))}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h3 className="text-xl font-bold text-gray-900">{level.title}</h3>
+          <p className="text-sm text-gray-500">الاستراتيجية: {level.strategy}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-amber-700 font-semibold" aria-label={`السلسلة ${toArabicDigits(streak)}`}>
+            🔥 {toArabicDigits(streak)}
+          </span>
+          {SpeechToggle}
+        </div>
+      </div>
+
+      <div className="bg-white border-2 border-primary-500 rounded-xl p-6 text-center">
+        <p className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 leading-relaxed">
+          {question?.prompt}
+        </p>
+
+        <div className="flex gap-3 justify-center items-center">
+          <label htmlFor="mult-answer" className="sr-only">إجابتك</label>
+          <input
+            id="mult-answer"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value.replace(/[^0-9]/g, ""))}
+            onKeyDown={onKeyDown}
+            disabled={!!feedback}
+            className="input-field text-center text-3xl w-32"
+            placeholder="؟"
+            autoFocus
+            autoComplete="off"
+          />
+          {!feedback ? (
+            <button type="button" onClick={check} className="btn-primary text-lg px-8 py-4 focus-visible-ring">
+              تحقّق
+            </button>
+          ) : (
+            <button type="button" onClick={next} className="btn-primary text-lg px-8 py-4 focus-visible-ring">
+              التالي
+            </button>
+          )}
+        </div>
+
+        <div role="status" aria-live="polite" className="mt-5 min-h-[3rem]">
+          {feedback && (
+            <div className={feedback.correct ? "text-green-700" : "text-red-700"}>
+              <p className="text-xl font-bold">
+                {feedback.correct
+                  ? `✓ أحسنت! ${toArabicDigits(question!.answer)} صحيحة`
+                  : `✗ الإجابة الصحيحة: ${toArabicDigits(question!.answer)}`}
+              </p>
+              <p className="text-gray-700 mt-2 leading-relaxed">{feedback.hint}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center">
+        <button type="button" onClick={exit} className="btn-secondary focus-visible-ring">
+          ← المستويات
+        </button>
+        <span className="text-sm text-gray-500">
+          نجوم هذا المستوى: ⭐ {toArabicDigits(progress.levels[level.id]?.stars ?? 0)}
+        </span>
       </div>
     </div>
   );
