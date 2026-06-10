@@ -15,6 +15,11 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  appleWebApp: {
+    capable: true,
+    title: "دليلي",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({
