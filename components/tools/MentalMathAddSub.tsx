@@ -1,442 +1,220 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { trackEvent } from "@/lib/analytics";
-import { playCorrectSound, playWrongSound } from "@/lib/sounds";
-import { speakNumber, speakOperation, setSpeechEnabled, isSpeechEnabled } from "@/lib/speech";
-import { speakNumberWithAudio, speakOperationWithAudio } from "@/lib/audio/audio-player";
-import AudioPlayer from "@/components/audio/AudioPlayer";
-import QuestionWithAudio from "@/components/audio/QuestionWithAudio";
-import SpeechToggleButton from "@/components/audio/SpeechToggleButton";
-import SpeakableText from "@/components/audio/SpeakableText";
+// Mental-math (addition & subtraction) tool — rebuilt to the Tool Playbook
+// (Batch 3). Levels follow the book: الجمع → الطرح → التقدير, each with regrouping
+// / rounding hints. Number ranges come from the grade scope in CURRICULUM_MATRIX.
+
+import { useRef, useState, useEffect, useMemo } from "react";
 import { getToolScope } from "@/lib/CURRICULUM_MATRIX";
+import { trackEvent } from "@/lib/analytics";
+import { useSpeechEnabled } from "@/lib/audio/speech-enabled-store";
+import { useToolProgress, recordResult } from "@/lib/gamification/progress-store";
+import { speakSequence } from "@/lib/audio/speak-sequence";
+import { toArabicDigits } from "@/lib/tools/multiplication/engine";
+import {
+  availableLevels,
+  generateQuestion,
+  type MentalMathLevel,
+  type MentalMathQuestion,
+  type MentalMathScope,
+} from "@/lib/tools/mental-math/engine";
 import type { GradeLevel } from "@/lib/types";
+
+const SLUG = "mental-math-add-sub";
 
 interface MentalMathAddSubProps {
   grade: GradeLevel | "all";
-  soundEnabled: boolean;
-  mode: "quick" | "full";
 }
 
-type Operation = "add" | "subtract";
-
-export default function MentalMathAddSub({
-  grade,
-  soundEnabled,
-  mode,
-}: MentalMathAddSubProps) {
-  const [operation, setOperation] = useState<Operation>("add");
-  const [isTraining, setIsTraining] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState<{
-    a: number;
-    b: number;
-    answer: number;
-    operation: Operation;
-  } | null>(null);
-  const [userAnswer, setUserAnswer] = useState<string>("");
-  const [score, setScore] = useState({ correct: 0, total: 0 });
-  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
-  const [questionCount, setQuestionCount] = useState(0);
-  const [speechEnabled, setSpeechEnabledState] = useState(false);
-
-  // Sync with global speech enabled state
-  useEffect(() => {
-    setSpeechEnabledState(isSpeechEnabled());
-    const interval = setInterval(() => {
-      setSpeechEnabledState(isSpeechEnabled());
-    }, 200);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Get scope from CURRICULUM_MATRIX
-  const scope = useMemo(() => {
-    return getToolScope("mental-math-add-sub", grade);
+export default function MentalMathAddSub({ grade }: MentalMathAddSubProps) {
+  const scope = useMemo<MentalMathScope>(() => {
+    const s = getToolScope(SLUG, grade);
+    return s && typeof s.maxNumber === "number" ? s : { maxNumber: 0, withCarry: false };
   }, [grade]);
+  const levels = useMemo(() => availableLevels(scope), [scope]);
 
-  const maxNumber: number = scope && typeof scope === "object" && "maxNumber" in scope
-    ? (scope.maxNumber as number)
-    : 100;
-  const withCarry: boolean = scope && typeof scope === "object" && "withCarry" in scope
-    ? (scope.withCarry as boolean)
-    : true;
+  const [speechEnabled, setSpeechEnabled] = useSpeechEnabled();
+  const progress = useToolProgress(SLUG);
 
-  // Determine number range based on scope
-  const getNumberRange = () => {
-    // For grade1 (maxNumber: 20, withCarry: false), ensure no carry
-    if (!withCarry) {
-      // For addition without carry: ensure a + b < 10 (each digit)
-      // For subtraction without carry: ensure a >= b and no borrowing
-      return { min: 1, max: maxNumber, withCarry: false };
-    }
-    return { min: 1, max: maxNumber, withCarry: true };
+  const [level, setLevel] = useState<MentalMathLevel | null>(null);
+  const [question, setQuestion] = useState<MentalMathQuestion | null>(null);
+  const [answer, setAnswer] = useState("");
+  const [feedback, setFeedback] = useState<{ correct: boolean; hint: string } | null>(null);
+  const [streak, setStreak] = useState(0);
+
+  const speechAbort = useRef<AbortController | null>(null);
+  useEffect(() => () => speechAbort.current?.abort(), []);
+
+  const speak = (q: MentalMathQuestion) => {
+    speechAbort.current?.abort();
+    if (!speechEnabled) return;
+    const controller = new AbortController();
+    speechAbort.current = controller;
+    void speakSequence([{ type: "pause", ms: 250 }, ...q.speech], controller.signal);
   };
 
-  const generateQuestion = (): {
-    a: number;
-    b: number;
-    answer: number;
-    operation: Operation;
-  } => {
-    const range = getNumberRange();
-    const op = operation;
-
-    if (op === "add") {
-      if (!withCarry) {
-        // For addition without carry: ensure no carry in any digit
-        // For grade1 (maxNumber: 20): use numbers where sum <= maxNumber and no carry
-        // Strategy: use numbers 1-9 for each digit, or ensure sum <= 9 per digit
-        // Simplified for grade1: use numbers 1-9, sum <= 9 (no carry) OR numbers 10-20 but sum <= 20 with no carry in units
-        // Best approach: use numbers 1-9, sum <= 9 (simple and clear)
-        const a = Math.floor(Math.random() * 9) + 1; // 1-9
-        const maxB = Math.min(9 - a, maxNumber - a); // Ensure a + b <= 9 (no carry) and <= maxNumber
-        const b = maxB > 0 ? Math.floor(Math.random() * maxB) + 1 : 1;
-        return {
-          a,
-          b,
-          answer: a + b,
-          operation: "add",
-        };
-      } else {
-        // For addition with carry: ensure answer is within range
-        const a = Math.floor(Math.random() * (maxNumber - 1)) + 1;
-        const maxB = Math.min(maxNumber - a, maxNumber - 1);
-        const b = maxB > 0 ? Math.floor(Math.random() * maxB) + 1 : 1;
-        return {
-          a,
-          b,
-          answer: a + b,
-          operation: "add",
-        };
-      }
-    } else {
-      // For subtraction
-      if (!withCarry) {
-        // For subtraction without carry: ensure no borrowing
-        // For grade1: use numbers 1-9, ensure a >= b and no borrowing needed
-        const a = Math.floor(Math.random() * Math.min(9, maxNumber)) + 1; // 1-9 or 1-maxNumber
-        const b = Math.floor(Math.random() * a) + 1; // 1 to a (no borrowing)
-        return {
-          a,
-          b,
-          answer: a - b,
-          operation: "subtract",
-        };
-      } else {
-        // For subtraction with carry: ensure result is positive
-        const a = Math.floor(Math.random() * (maxNumber - 1)) + 1;
-        const b = Math.floor(Math.random() * a) + 1;
-        return {
-          a,
-          b,
-          answer: a - b,
-          operation: "subtract",
-        };
-      }
-    }
-  };
-
-  const startTraining = () => {
-    setIsTraining(true);
-    setScore({ correct: 0, total: 0 });
-    setQuestionCount(0);
-    const question = generateQuestion();
-    setCurrentQuestion(question);
-    setUserAnswer("");
+  const startLevel = (lvl: MentalMathLevel) => {
+    const q = generateQuestion(lvl, scope);
+    setLevel(lvl);
+    setQuestion(q);
+    setAnswer("");
     setFeedback(null);
-    trackEvent("start_training", { tool: "mental-math-add-sub" });
-    
-    // Speak the question using hybrid audio system
+    setStreak(0);
+    trackEvent("start_training", { tool: SLUG, level: lvl.id });
+    speak(q);
+  };
+
+  const check = () => {
+    if (!question || !level || answer.trim() === "" || feedback) return;
+    const correct = Number(answer) === question.answer;
+    const nextStreak = correct ? streak + 1 : 0;
+    setStreak(nextStreak);
+    recordResult(SLUG, level.id, correct, nextStreak);
+    setFeedback({ correct, hint: question.hint });
+    trackEvent(correct ? "answer_correct" : "answer_wrong", { tool: SLUG, level: level.id });
     if (speechEnabled) {
-      setTimeout(async () => {
-        await speakNumberWithAudio(question.a);
-        setTimeout(async () => {
-          await speakOperationWithAudio(question.operation);
-          setTimeout(async () => {
-            await speakNumberWithAudio(question.b);
-          }, 300);
-        }, 300);
-      }, 300);
+      speechAbort.current?.abort();
+      const controller = new AbortController();
+      speechAbort.current = controller;
+      void speakSequence([{ type: "number", value: question.answer }], controller.signal);
     }
   };
 
-  const handleAnswer = () => {
-    if (!currentQuestion || !userAnswer) return;
-
-    const userNum = parseInt(userAnswer);
-    const isCorrect = userNum === currentQuestion.answer;
-
-    setScore((prev) => ({
-      correct: prev.correct + (isCorrect ? 1 : 0),
-      total: prev.total + 1,
-    }));
-
-    setQuestionCount((prev) => prev + 1);
-
-    if (isCorrect) {
-      trackEvent("answer_correct", { tool: "mental-math-add-sub" });
-      setFeedback("correct");
-      if (speechEnabled) {
-        playCorrectSound();
-        // Speak the correct answer using hybrid audio system
-        setTimeout(async () => {
-          await speakNumberWithAudio(currentQuestion.answer);
-        }, 300);
-      }
-    } else {
-      trackEvent("answer_wrong", { tool: "mental-math-add-sub" });
-      setFeedback("wrong");
-      if (speechEnabled) {
-        playWrongSound();
-        // Speak the correct answer using hybrid audio system
-        setTimeout(async () => {
-          await speakNumberWithAudio(currentQuestion.answer);
-        }, 500);
-      }
-    }
-
-    setTimeout(() => {
-      const nextQuestion = generateQuestion();
-      setCurrentQuestion(nextQuestion);
-      setUserAnswer("");
-      setFeedback(null);
-      
-      // Speak the next question using hybrid audio system
-      if (speechEnabled) {
-        setTimeout(async () => {
-          await speakNumberWithAudio(nextQuestion.a);
-          setTimeout(async () => {
-            await speakOperationWithAudio(nextQuestion.operation);
-            setTimeout(async () => {
-              await speakNumberWithAudio(nextQuestion.b);
-            }, 300);
-          }, 300);
-        }, 300);
-      }
-    }, 2000);
+  const next = () => {
+    if (!level) return;
+    const q = generateQuestion(level, scope);
+    setQuestion(q);
+    setAnswer("");
+    setFeedback(null);
+    speak(q);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleAnswer();
-    }
-  };
-
-  const resetTraining = () => {
-    setIsTraining(false);
-    setCurrentQuestion(null);
-    setUserAnswer("");
-    setScore({ correct: 0, total: 0 });
-    setQuestionCount(0);
+  const exit = () => {
+    speechAbort.current?.abort();
+    setLevel(null);
+    setQuestion(null);
     setFeedback(null);
   };
 
-  // Not started
-  if (!isTraining) {
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter") return;
+    if (feedback) next();
+    else check();
+  };
+
+  const SpeechToggle = (
+    <button
+      type="button"
+      onClick={() => setSpeechEnabled(!speechEnabled)}
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors focus-visible-ring"
+      aria-pressed={speechEnabled}
+      aria-label={speechEnabled ? "إيقاف النطق" : "تفعيل النطق"}
+    >
+      <span className="text-xl" aria-hidden="true">{speechEnabled ? "🔊" : "🔇"}</span>
+      <span>{speechEnabled ? "النطق مفعّل" : "النطق متوقّف"}</span>
+    </button>
+  );
+
+  if (scope.maxNumber === 0 || levels.length === 0) {
     return (
-      <div className="space-y-6">
-        <SpeechToggleButton position="top-right" showLabel={true} />
-        <div className="text-center">
-          <h3 className="text-2xl font-bold text-gray-900 mb-4">
-            <SpeakableText
-              text="الجمع والطرح الذهني"
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </h3>
-          <p className="text-gray-600 mb-6">
-            <SpeakableText
-              text="اختر نوع العملية وابدأ التدريب"
-              showButton={speechEnabled}
-              buttonPosition="inline"
-              className="block"
-            />
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-4 justify-center mb-6">
-          <button
-            onClick={() => {
-              setOperation("add");
-              startTraining();
-            }}
-            className={`px-8 py-4 rounded-lg font-semibold text-lg transition-colors ${
-              operation === "add"
-                ? "bg-primary-600 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
-          >
-            ➕ <SpeakableText
-              text="الجمع"
-              showButton={false}
-              clickable={true}
-              className="inline"
-            />
-          </button>
-          <button
-            onClick={() => {
-              setOperation("subtract");
-              startTraining();
-            }}
-            className={`px-8 py-4 rounded-lg font-semibold text-lg transition-colors ${
-              operation === "subtract"
-                ? "bg-primary-600 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
-          >
-            ➖ <SpeakableText
-              text="الطرح"
-              showButton={false}
-              clickable={true}
-              className="inline"
-            />
-          </button>
-        </div>
-
-        <div className="bg-primary-50 border-r-4 border-primary-500 p-4 rounded-lg">
-          <p className="text-primary-900 font-medium">
-            💡 <SpeakableText
-              text="نصيحة: ابدأ بالجمع، ثم انتقل للطرح عندما تشعر بالثقة"
-              showButton={false}
-              clickable={true}
-              className="inline"
-            />
-          </p>
-        </div>
+      <div className="text-center py-12">
+        <p className="text-xl text-gray-700 mb-2">لا يوجد تدريب متاح لهذا الصف الدراسي.</p>
       </div>
     );
   }
 
-  // Training in progress
+  if (!level) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-lg text-gray-700">اختر مهارة لتبدأ التدرّب: الجمع، الطرح، أو التقدير.</p>
+          {SpeechToggle}
+        </div>
+        <div className="flex items-center gap-2 text-amber-700 bg-amber-50 rounded-lg px-4 py-2 w-fit" aria-label={`مجموع نجومك ${toArabicDigits(progress.totalStars)}`}>
+          <span className="text-xl" aria-hidden="true">⭐</span>
+          <span className="font-bold">{toArabicDigits(progress.totalStars)}</span>
+          <span className="text-sm">نجمة</span>
+        </div>
+        <ul className="grid gap-4 sm:grid-cols-2">
+          {levels.map((lvl) => {
+            const lp = progress.levels[lvl.id];
+            return (
+              <li key={lvl.id}>
+                <button type="button" onClick={() => startLevel(lvl)} className="w-full text-right card hover:border-primary-300 transition-colors focus-visible-ring">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 mb-1">{lvl.title}</h3>
+                      <p className="text-sm text-gray-500">الاستراتيجية: {lvl.strategy}</p>
+                    </div>
+                    {lp?.mastered && <span className="text-green-600 font-bold whitespace-nowrap" aria-label="مُتقَن">✓ مُتقَن</span>}
+                  </div>
+                  {lp && lp.stars > 0 && <p className="text-amber-600 text-sm mt-2">⭐ {toArabicDigits(lp.stars)}</p>}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <SpeechToggleButton position="top-right" showLabel={true} />
-      {/* Score and question count */}
-      <div className="flex justify-between items-center">
-        <div className="bg-gray-100 rounded-lg p-3">
-          <p className="text-sm text-gray-600">
-            <SpeakableText
-              text="النتيجة"
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </p>
-          <p className="text-lg font-bold text-gray-900">
-            <SpeakableText
-              text={`${score.correct} / ${score.total}`}
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </p>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h3 className="text-xl font-bold text-gray-900">{level.title}</h3>
+          <p className="text-sm text-gray-500">الاستراتيجية: {level.strategy}</p>
         </div>
-        <div className="bg-gray-100 rounded-lg p-3">
-          <p className="text-sm text-gray-600">
-            <SpeakableText
-              text="عدد الأسئلة"
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </p>
-          <p className="text-lg font-bold text-gray-900">
-            <SpeakableText
-              text={questionCount.toString()}
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="text-amber-700 font-semibold" aria-label={`السلسلة ${toArabicDigits(streak)}`}>🔥 {toArabicDigits(streak)}</span>
+          {SpeechToggle}
         </div>
       </div>
 
-      {/* Question */}
-      <div className="text-center bg-white rounded-xl shadow-lg p-8">
-        <p className="text-4xl md:text-5xl font-bold text-gray-900 mb-8">
-          <SpeakableText
-            text={`${currentQuestion?.a} ${currentQuestion?.operation === "add" ? "+" : "−"} ${currentQuestion?.b} = ?`}
-            showButton={speechEnabled}
-            buttonPosition="inline"
-            className="block"
-          />
-        </p>
-        <div className="flex gap-4 justify-center items-center">
+      <div className="bg-white border-2 border-primary-500 rounded-xl p-6 text-center">
+        <p className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 leading-relaxed">{question?.prompt}</p>
+
+        <div className="flex gap-3 justify-center items-center">
+          <label htmlFor="mm-answer" className="sr-only">إجابتك</label>
           <input
-            type="number"
-            value={userAnswer}
-            onChange={(e) => setUserAnswer(e.target.value)}
-            onKeyPress={handleKeyPress}
+            id="mm-answer"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value.replace(/[^0-9]/g, ""))}
+            onKeyDown={onKeyDown}
+            disabled={!!feedback}
             className="input-field text-center text-3xl w-32"
-            placeholder="?"
+            placeholder="؟"
             autoFocus
+            autoComplete="off"
           />
-          <button onClick={handleAnswer} className="btn-primary text-lg px-8 py-4">
-            <SpeakableText
-              text="تحقق"
-              showButton={false}
-              clickable={true}
-              className="inline"
-            />
-          </button>
-        </div>
-        {feedback === "correct" && (
-          <p className="text-green-600 text-xl font-bold mt-4">
-            <SpeakableText
-              text="✓ صحيح! أحسنت"
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </p>
-        )}
-        {feedback === "wrong" && (
-          <p className="text-red-600 text-xl font-bold mt-4">
-            <SpeakableText
-              text={`✗ خطأ. الإجابة الصحيحة: ${currentQuestion?.answer}`}
-              showButton={false}
-              clickable={true}
-              className="block"
-            />
-          </p>
-        )}
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <button
-          onClick={() => {
-            setOperation(operation === "add" ? "subtract" : "add");
-            setCurrentQuestion(generateQuestion());
-            setUserAnswer("");
-            setFeedback(null);
-          }}
-          className="btn-secondary"
-        >
-          {operation === "add" ? (
-            <>➖ <SpeakableText text="التبديل للطرح" showButton={false} clickable={true} className="inline" /></>
+          {!feedback ? (
+            <button type="button" onClick={check} className="btn-primary text-lg px-8 py-4 focus-visible-ring">تحقّق</button>
           ) : (
-            <>➕ <SpeakableText text="التبديل للجمع" showButton={false} clickable={true} className="inline" /></>
+            <button type="button" onClick={next} className="btn-primary text-lg px-8 py-4 focus-visible-ring">التالي</button>
           )}
-        </button>
-        <button onClick={resetTraining} className="btn-secondary">
-          <SpeakableText
-            text="إنهاء التدريب"
-            showButton={false}
-            clickable={true}
-            className="inline"
-          />
-        </button>
+        </div>
+
+        <div role="status" aria-live="polite" className="mt-5 min-h-[3rem]">
+          {feedback && (
+            <div className={feedback.correct ? "text-green-700" : "text-red-700"}>
+              <p className="text-xl font-bold">
+                {feedback.correct
+                  ? `✓ أحسنت! ${toArabicDigits(question!.answer)} صحيحة`
+                  : `✗ الإجابة الصحيحة: ${toArabicDigits(question!.answer)}`}
+              </p>
+              <p className="text-gray-700 mt-2 leading-relaxed">{feedback.hint}</p>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Tips */}
-      {questionCount > 0 && questionCount % 5 === 0 && (
-        <div className="bg-blue-50 border-r-4 border-blue-500 p-4 rounded-lg">
-          <p className="text-blue-900 font-medium">
-            🌟 رائع! استمر في الممارسة لتحسين سرعتك ودقتك
-          </p>
-        </div>
-      )}
+      <div className="flex justify-between items-center">
+        <button type="button" onClick={exit} className="btn-secondary focus-visible-ring">← المهارات</button>
+        <span className="text-sm text-gray-500">نجوم هذه المهارة: ⭐ {toArabicDigits(progress.levels[level.id]?.stars ?? 0)}</span>
+      </div>
     </div>
   );
 }
