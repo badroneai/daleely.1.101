@@ -165,13 +165,13 @@ const arabicLearningPaths: Record<GradeLevel, Array<{ step: number; title: strin
 };
 
 interface PageProps {
-  params: {
+  params: Promise<{
     gradeLevel: string;
-  };
+  }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { gradeLevel } = params;
+  const { gradeLevel } = await params;
   
   if (!validGradeLevels.includes(gradeLevel as GradeLevel)) {
     return {
@@ -188,8 +188,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   );
 }
 
-export default function StudentGradePage({ params }: PageProps) {
-  const { gradeLevel } = params;
+export default async function StudentGradePage({ params }: PageProps) {
+  const { gradeLevel } = await params;
 
   if (!validGradeLevels.includes(gradeLevel as GradeLevel)) {
     notFound();
