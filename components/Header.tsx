@@ -25,6 +25,12 @@ export default function Header() {
               🗺️ رحلتي
             </Link>
             <Link
+              href="/games"
+              className="text-rose-600 hover:text-rose-700 font-semibold transition-all duration-200 px-2 py-2 min-h-[44px] flex items-center rounded-md hover:bg-rose-50 focus-visible-ring"
+            >
+              🎮 ألعاب
+            </Link>
+            <Link
               href="/learn"
               className="text-gray-700 hover:text-primary-600 font-medium transition-all duration-200 px-2 py-2 min-h-[44px] flex items-center rounded-md hover:bg-primary-50 focus-visible-ring"
             >
