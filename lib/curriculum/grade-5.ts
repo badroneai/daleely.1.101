@@ -2,9 +2,9 @@ import type { GradeCurriculum } from "./types";
 
 // الصف الخامس الابتدائي — الفصل الدراسي الأول
 // Source: كتب الطالب الرسمية (منصة عين) — scope & sequence extracted from each
-// book's فهرس. Math lessons are linked to existing interactive tools where one
-// covers the skill; the rest are marked "practice" (tool to build — see the gap
-// report) or "lesson" (learn content). See docs/CURRICULUM_PIPELINE.md.
+// book's فهرس. Math lessons are wired to the interactive tools that cover each
+// skill; the rest are "practice" (no tool yet) or "lesson" (learn content).
+// See docs/CURRICULUM_PIPELINE.md.
 
 export const grade5: GradeCurriculum = {
   grade: "grade5",
@@ -23,10 +23,10 @@ export const grade5: GradeCurriculum = {
           lessons: [
             { title: "القيمة المنزلية ضمن البلايين", productType: "interactive", toolSlug: "place-value" },
             { title: "المقارنة بين الأعداد", productType: "interactive", toolSlug: "place-value" },
-            "الكسور الاعتيادية والكسور العشرية",
-            "القيمة المنزلية ضمن أجزاء الألف",
-            "مقارنة الكسور العشرية",
-            "ترتيب الأعداد والكسور العشرية",
+            { title: "الكسور الاعتيادية والكسور العشرية", productType: "interactive", toolSlug: "decimals" },
+            { title: "القيمة المنزلية ضمن أجزاء الألف", productType: "interactive", toolSlug: "decimals" },
+            { title: "مقارنة الكسور العشرية", productType: "interactive", toolSlug: "decimals" },
+            { title: "ترتيب الأعداد والكسور العشرية", productType: "interactive", toolSlug: "decimals" },
             { title: "خطة حل المسألة: التخمين والتحقق", productType: "lesson" },
           ],
         },
@@ -69,12 +69,12 @@ export const grade5: GradeCurriculum = {
         {
           title: "الفصل الخامس: العبارات الجبرية والمعادلات",
           lessons: [
-            "عبارات الجمع والطرح الجبرية",
+            { title: "عبارات الجمع والطرح الجبرية", productType: "interactive", toolSlug: "algebra" },
             { title: "خطة حل المسألة: حل مسألة أبسط", productType: "lesson" },
-            "عبارات الضرب والقسمة الجبرية",
-            "ترتيب العمليات",
-            "معادلات الجمع والطرح",
-            "معادلات الضرب",
+            { title: "عبارات الضرب والقسمة الجبرية", productType: "interactive", toolSlug: "algebra" },
+            { title: "ترتيب العمليات", productType: "interactive", toolSlug: "algebra" },
+            { title: "معادلات الجمع والطرح", productType: "interactive", toolSlug: "algebra" },
+            { title: "معادلات الضرب", productType: "interactive", toolSlug: "algebra" },
             "جداول الدوال",
           ],
         },
@@ -91,29 +91,29 @@ export const grade5: GradeCurriculum = {
         {
           title: "الفصل السابع: الإحصاء والاحتمال",
           lessons: [
-            "المتوسط الحسابي والوسيط والمنوال",
+            { title: "المتوسط الحسابي والوسيط والمنوال", productType: "interactive", toolSlug: "statistics" },
             { title: "التمثيل بالأعمدة", productType: "lesson" },
-            "الاحتمال",
-            "الاحتمال والكسور",
-            "تحديد النواتج الممكنة",
+            { title: "الاحتمال", productType: "interactive", toolSlug: "statistics" },
+            { title: "الاحتمال والكسور", productType: "interactive", toolSlug: "statistics" },
+            { title: "تحديد النواتج الممكنة", productType: "interactive", toolSlug: "statistics" },
           ],
         },
         {
           title: "الفصل الثامن: القواسم والمضاعفات",
           lessons: [
-            "القواسم المشتركة",
-            "الأعداد الأولية والأعداد غير الأولية",
+            { title: "القواسم المشتركة", productType: "interactive", toolSlug: "number-theory" },
+            { title: "الأعداد الأولية والأعداد غير الأولية", productType: "interactive", toolSlug: "number-theory" },
             { title: "الكسور المتكافئة", productType: "interactive", toolSlug: "fractions" },
-            "تبسيط الكسور",
-            "المضاعفات المشتركة",
+            { title: "تبسيط الكسور", productType: "interactive", toolSlug: "fraction-operations" },
+            { title: "المضاعفات المشتركة", productType: "interactive", toolSlug: "number-theory" },
             { title: "مقارنة الكسور الاعتيادية", productType: "interactive", toolSlug: "fractions" },
           ],
         },
         {
           title: "الفصل التاسع: جمع الكسور وطرحها",
           lessons: [
-            "جمع الكسور المتشابهة",
-            "طرح الكسور المتشابهة",
+            { title: "جمع الكسور المتشابهة", productType: "interactive", toolSlug: "fraction-operations" },
+            { title: "طرح الكسور المتشابهة", productType: "interactive", toolSlug: "fraction-operations" },
             "جمع الكسور غير المتشابهة",
             "طرح الكسور غير المتشابهة",
             "تقدير حل المسألة",
@@ -122,10 +122,10 @@ export const grade5: GradeCurriculum = {
         {
           title: "الفصل العاشر: وحدات القياس",
           lessons: [
-            "المنظومة المترية",
-            "وحدات الطول",
-            "وحدات الكتلة",
-            "وحدات السعة",
+            { title: "المنظومة المترية", productType: "interactive", toolSlug: "measurement" },
+            { title: "وحدات الطول", productType: "interactive", toolSlug: "measurement" },
+            { title: "وحدات الكتلة", productType: "interactive", toolSlug: "measurement" },
+            { title: "وحدات السعة", productType: "interactive", toolSlug: "measurement" },
             { title: "وحدات الزمن", productType: "interactive", toolSlug: "telling-time" },
             { title: "حساب الزمن المنقضي", productType: "interactive", toolSlug: "telling-time" },
           ],
@@ -134,8 +134,8 @@ export const grade5: GradeCurriculum = {
           title: "الفصل الحادي عشر: الأشكال الهندسية",
           lessons: [
             { title: "مفردات هندسية", productType: "lesson" },
-            "الأشكال الرباعية",
-            "المستوى الإحداثي",
+            { title: "الأشكال الرباعية", productType: "interactive", toolSlug: "geometry" },
+            { title: "المستوى الإحداثي", productType: "interactive", toolSlug: "geometry" },
             "الانسحاب في المستوى الإحداثي",
             "الانعكاس في المستوى الإحداثي",
             "الدوران في المستوى الإحداثي",
@@ -144,11 +144,11 @@ export const grade5: GradeCurriculum = {
         {
           title: "الفصل الثاني عشر: المحيط والمساحة والحجم",
           lessons: [
-            "محيط المستطيل",
+            { title: "محيط المستطيل", productType: "interactive", toolSlug: "perimeter-area-volume" },
             "محيط مضلع",
-            "مساحة المستطيل والمربع",
+            { title: "مساحة المستطيل والمربع", productType: "interactive", toolSlug: "perimeter-area-volume" },
             "الأشكال الثلاثية الأبعاد",
-            "حجم المنشور",
+            { title: "حجم المنشور", productType: "interactive", toolSlug: "perimeter-area-volume" },
           ],
         },
       ],
