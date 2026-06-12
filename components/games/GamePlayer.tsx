@@ -9,6 +9,7 @@ import DuelGame from "./DuelGame";
 import WhackGame from "./WhackGame";
 import SequenceGame from "./SequenceGame";
 import SortingGame from "./SortingGame";
+import AdventureGame from "./AdventureGame";
 
 export default function GamePlayer({ id }: { id: string }) {
   if (id === "balloon") return <BalloonGame />;
@@ -20,5 +21,6 @@ export default function GamePlayer({ id }: { id: string }) {
   if (id === "whack") return <WhackGame />;
   if (id === "sequence") return <SequenceGame />;
   if (id === "sorting") return <SortingGame />;
+  if (id === "adventure") return <AdventureGame />;
   return <p className="text-center text-gray-600 py-12">هذه اللعبة قيد الإعداد — قريبًا 🚧</p>;
 }
