@@ -19,6 +19,12 @@ export default function Header() {
               ⭐ نجومي
             </Link>
             <Link
+              href="/journey/grade5"
+              className="text-indigo-600 hover:text-indigo-700 font-semibold transition-all duration-200 px-2 py-2 min-h-[44px] flex items-center rounded-md hover:bg-indigo-50 focus-visible-ring"
+            >
+              🗺️ رحلتي
+            </Link>
+            <Link
               href="/learn"
               className="text-gray-700 hover:text-primary-600 font-medium transition-all duration-200 px-2 py-2 min-h-[44px] flex items-center rounded-md hover:bg-primary-50 focus-visible-ring"
             >
