@@ -32,6 +32,13 @@ export default function LearnPage() {
           <p className="text-gray-600">تعلّم بالتفاعل: اختبار، مطابقة، تصنيف، ترتيب، وتسمية — لكل المواد.</p>
         </div>
 
+        <Link
+          href="/practice"
+          className="block mb-8 rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-700 text-white p-5 text-center font-bold shadow-lg hover:shadow-xl transition-shadow focus-visible-ring"
+        >
+          ✏️ جرّب التدريب التفاعلي الحسّي — أنشطة لا نهائية تتولّد لك! ←
+        </Link>
+
         <div className="space-y-8">
           {subjects.map((s) => (
             <section key={s}>

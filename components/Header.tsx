@@ -31,6 +31,12 @@ export default function Header() {
               🎮 ألعاب
             </Link>
             <Link
+              href="/practice"
+              className="text-sky-600 hover:text-sky-700 font-semibold transition-all duration-200 px-2 py-2 min-h-[44px] flex items-center rounded-md hover:bg-sky-50 focus-visible-ring"
+            >
+              ✏️ تدريب
+            </Link>
+            <Link
               href="/learn"
               className="text-gray-700 hover:text-primary-600 font-medium transition-all duration-200 px-2 py-2 min-h-[44px] flex items-center rounded-md hover:bg-primary-50 focus-visible-ring"
             >
