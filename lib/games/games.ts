@@ -16,7 +16,7 @@ export const GAMES: GameMeta[] = [
   { id: "quiz-show", title: "مسابقة النجوم", emoji: "🏆", desc: "أسئلة صاعدة مع مساعدة ٥٠:٥٠", built: true },
   { id: "sequence", title: "سباق الترتيب", emoji: "↕️", desc: "رتّب المراحل والأحداث بالترتيب الصحيح", built: true },
   { id: "sorting", title: "فرز سريع", emoji: "🗂️", desc: "وزّع العناصر في السلال الصحيحة", built: true },
-  { id: "adventure", title: "مغامرة الجزيرة", emoji: "🗺️", desc: "تحدّيات المنهج في مغامرة شيّقة", built: false },
+  { id: "adventure", title: "مغامرة الجزيرة", emoji: "🗺️", desc: "تحدّيات المنهج في مغامرة شيّقة", built: true },
   { id: "duel", title: "مبارزة", emoji: "⚔️", desc: "لاعبان على جهاز واحد يتنافسان", built: true },
 ];
 
