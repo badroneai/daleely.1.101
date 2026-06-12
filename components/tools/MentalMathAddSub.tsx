@@ -19,6 +19,7 @@ import {
   type MentalMathScope,
 } from "@/lib/tools/mental-math/engine";
 import type { GradeLevel } from "@/lib/types";
+import TeachExample from "./TeachExample";
 
 const SLUG = "mental-math-add-sub";
 
@@ -41,6 +42,7 @@ export default function MentalMathAddSub({ grade }: MentalMathAddSubProps) {
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<{ correct: boolean; hint: string } | null>(null);
   const [streak, setStreak] = useState(0);
+  const [teach, setTeach] = useState<MentalMathQuestion | null>(null);
 
   const speechAbort = useRef<AbortController | null>(null);
   useEffect(() => () => speechAbort.current?.abort(), []);
@@ -167,10 +169,19 @@ export default function MentalMathAddSub({ grade }: MentalMathAddSubProps) {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-amber-700 font-semibold" aria-label={`السلسلة ${toArabicDigits(streak)}`}>🔥 {toArabicDigits(streak)}</span>
+          <button type="button" onClick={() => setTeach(generateQuestion(level, scope))} className="inline-flex items-center gap-1 px-3 py-2 rounded-lg font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors focus-visible-ring">📚 تعلّم</button>
           {SpeechToggle}
         </div>
       </div>
 
+      {teach ? (
+        <TeachExample
+          key={teach.prompt}
+          sample={{ prompt: teach.prompt, answer: String(teach.answer), hint: teach.hint }}
+          onAnother={() => setTeach(generateQuestion(level, scope))}
+          onDone={() => setTeach(null)}
+        />
+      ) : (
       <div className="bg-white border-2 border-primary-500 rounded-xl p-6 text-center">
         <p className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 leading-relaxed">{question?.prompt}</p>
 
@@ -210,6 +221,7 @@ export default function MentalMathAddSub({ grade }: MentalMathAddSubProps) {
           )}
         </div>
       </div>
+      )}
 
       <div className="flex justify-between items-center">
         <button type="button" onClick={exit} className="btn-secondary focus-visible-ring">← المهارات</button>
