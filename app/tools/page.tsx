@@ -18,6 +18,7 @@ const emojiBySlug: Record<string, string> = {
   "telling-time": "⏰",
   "place-value": "🔢",
   fractions: "🍕",
+  decimals: "🔟",
   "arabic-letters": "🔤",
   "letter-sounds": "🔊",
   harakat: "✏️",

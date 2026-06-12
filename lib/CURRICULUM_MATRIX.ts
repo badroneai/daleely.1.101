@@ -63,6 +63,11 @@ export const toolVisibilityRules: Record<string, ToolVisibility> = {
     maxGrade: "grade6",
     defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
   },
+  "decimals": {
+    minGrade: "grade4",
+    maxGrade: "grade6",
+    defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
+  },
 
   // أدوات اللغة العربية
   "arabic-letters": {
@@ -146,6 +151,23 @@ export const fractionsScope: Record<GradeLevel | "all", { dens: number[] }> = {
   grade8: { dens: [2, 3, 4, 5, 6, 8, 10, 12] },
   grade9: { dens: [2, 3, 4, 5, 6, 8, 10, 12] },
   all: { dens: [2, 3, 4, 6, 8] },
+};
+
+// الكسور العشرية: عدد المنازل العشرية حسب الصف
+export const decimalsScope: Record<GradeLevel | "all", { places: number }> = {
+  kg1: { places: 0 },
+  kg2: { places: 0 },
+  kg3: { places: 0 },
+  grade1: { places: 0 },
+  grade2: { places: 0 },
+  grade3: { places: 0 },
+  grade4: { places: 2 },
+  grade5: { places: 3 },
+  grade6: { places: 3 },
+  grade7: { places: 3 },
+  grade8: { places: 3 },
+  grade9: { places: 3 },
+  all: { places: 2 },
 };
 
 // اختبار الضرب: نطاق الأسئلة حسب الصف
@@ -233,6 +255,8 @@ export function getToolScope(toolSlug: string, grade: GradeLevel | "all"): any {
       return placeValueScope[grade] || placeValueScope.all;
     case "fractions":
       return fractionsScope[grade] || fractionsScope.all;
+    case "decimals":
+      return decimalsScope[grade] || decimalsScope.all;
     case "multiplication-quiz":
       return multiplicationQuizScope[grade] || multiplicationQuizScope.all;
     case "mental-math-add-sub":

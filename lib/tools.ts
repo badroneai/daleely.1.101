@@ -83,6 +83,16 @@ export const tools: Tool[] = [
     scopeByGrade: createScopeByGrade("fractions"),
   },
   {
+    slug: "decimals",
+    title: "الكسور العشرية",
+    description: "تعلّم قراءة الكسور العشرية ومقارنتها والتحويل بينها وبين الكسور الاعتيادية بتمارين تفاعلية",
+    category: "math",
+    gradeLevel: "all",
+    keywords: ["الكسور العشرية", "الفاصلة العشرية", "الأعشار", "أجزاء من مئة", "مقارنة الكسور العشرية"],
+    visibility: toolVisibilityRules["decimals"],
+    scopeByGrade: createScopeByGrade("decimals"),
+  },
+  {
     slug: "arabic-letters",
     title: "تعلم الحروف العربية",
     description: "تعرف على الحروف العربية مع أشكالها وأصواتها",
