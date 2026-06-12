@@ -73,6 +73,11 @@ export const toolVisibilityRules: Record<string, ToolVisibility> = {
     maxGrade: "grade6",
     defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
   },
+  "number-theory": {
+    minGrade: "grade4",
+    maxGrade: "grade6",
+    defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
+  },
 
   // أدوات اللغة العربية
   "arabic-letters": {
@@ -192,6 +197,17 @@ export const fractionOpsScope: Record<GradeLevel | "all", { dens: number[] }> = 
   all: { dens: [2, 3, 4, 5, 6, 8] },
 };
 
+// القواسم والمضاعفات: أكبر عدد مستعمل حسب الصف
+export const numberTheoryScope: Record<GradeLevel | "all", { max: number }> = {
+  kg1: { max: 0 }, kg2: { max: 0 }, kg3: { max: 0 },
+  grade1: { max: 0 }, grade2: { max: 0 }, grade3: { max: 0 },
+  grade4: { max: 24 },
+  grade5: { max: 50 },
+  grade6: { max: 100 },
+  grade7: { max: 100 }, grade8: { max: 100 }, grade9: { max: 100 },
+  all: { max: 50 },
+};
+
 // اختبار الضرب: نطاق الأسئلة حسب الصف
 export const multiplicationQuizScope: Record<GradeLevel | "all", { tables: number[]; difficulty: "easy" | "medium" | "hard" }> = {
   kg1: { tables: [], difficulty: "easy" },
@@ -281,6 +297,8 @@ export function getToolScope(toolSlug: string, grade: GradeLevel | "all"): any {
       return decimalsScope[grade] || decimalsScope.all;
     case "fraction-operations":
       return fractionOpsScope[grade] || fractionOpsScope.all;
+    case "number-theory":
+      return numberTheoryScope[grade] || numberTheoryScope.all;
     case "multiplication-quiz":
       return multiplicationQuizScope[grade] || multiplicationQuizScope.all;
     case "mental-math-add-sub":

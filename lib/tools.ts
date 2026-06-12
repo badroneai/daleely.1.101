@@ -103,6 +103,16 @@ export const tools: Tool[] = [
     scopeByGrade: createScopeByGrade("fraction-operations"),
   },
   {
+    slug: "number-theory",
+    title: "القواسم والمضاعفات",
+    description: "تدرّب على القواسم والأعداد الأولية والقاسم المشترك الأكبر بتمارين تفاعلية",
+    category: "math",
+    gradeLevel: "all",
+    keywords: ["القواسم", "الأعداد الأولية", "القاسم المشترك الأكبر", "المضاعفات", "العوامل"],
+    visibility: toolVisibilityRules["number-theory"],
+    scopeByGrade: createScopeByGrade("number-theory"),
+  },
+  {
     slug: "arabic-letters",
     title: "تعلم الحروف العربية",
     description: "تعرف على الحروف العربية مع أشكالها وأصواتها",
