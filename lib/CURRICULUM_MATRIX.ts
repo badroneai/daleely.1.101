@@ -68,6 +68,11 @@ export const toolVisibilityRules: Record<string, ToolVisibility> = {
     maxGrade: "grade6",
     defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
   },
+  "fraction-operations": {
+    minGrade: "grade4",
+    maxGrade: "grade6",
+    defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
+  },
 
   // أدوات اللغة العربية
   "arabic-letters": {
@@ -170,6 +175,23 @@ export const decimalsScope: Record<GradeLevel | "all", { places: number }> = {
   all: { places: 2 },
 };
 
+// عمليات الكسور: المقامات المتاحة حسب الصف
+export const fractionOpsScope: Record<GradeLevel | "all", { dens: number[] }> = {
+  kg1: { dens: [] },
+  kg2: { dens: [] },
+  kg3: { dens: [] },
+  grade1: { dens: [] },
+  grade2: { dens: [] },
+  grade3: { dens: [] },
+  grade4: { dens: [2, 3, 4, 5, 6, 8] },
+  grade5: { dens: [2, 3, 4, 5, 6, 8, 10, 12] },
+  grade6: { dens: [2, 3, 4, 5, 6, 8, 10, 12] },
+  grade7: { dens: [2, 3, 4, 5, 6, 8, 10, 12] },
+  grade8: { dens: [2, 3, 4, 5, 6, 8, 10, 12] },
+  grade9: { dens: [2, 3, 4, 5, 6, 8, 10, 12] },
+  all: { dens: [2, 3, 4, 5, 6, 8] },
+};
+
 // اختبار الضرب: نطاق الأسئلة حسب الصف
 export const multiplicationQuizScope: Record<GradeLevel | "all", { tables: number[]; difficulty: "easy" | "medium" | "hard" }> = {
   kg1: { tables: [], difficulty: "easy" },
@@ -257,6 +279,8 @@ export function getToolScope(toolSlug: string, grade: GradeLevel | "all"): any {
       return fractionsScope[grade] || fractionsScope.all;
     case "decimals":
       return decimalsScope[grade] || decimalsScope.all;
+    case "fraction-operations":
+      return fractionOpsScope[grade] || fractionOpsScope.all;
     case "multiplication-quiz":
       return multiplicationQuizScope[grade] || multiplicationQuizScope.all;
     case "mental-math-add-sub":

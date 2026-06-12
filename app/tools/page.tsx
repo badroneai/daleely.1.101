@@ -19,6 +19,7 @@ const emojiBySlug: Record<string, string> = {
   "place-value": "🔢",
   fractions: "🍕",
   decimals: "🔟",
+  "fraction-operations": "➗",
   "arabic-letters": "🔤",
   "letter-sounds": "🔊",
   harakat: "✏️",
