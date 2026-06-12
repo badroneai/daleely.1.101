@@ -91,6 +91,15 @@ export default function StudentPage() {
           </p>
         </div>
 
+        <div className="mb-8">
+          <Link
+            href="/curriculum/grade5"
+            className="block rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-700 text-white p-5 text-center font-bold shadow-lg hover:shadow-xl transition-shadow focus-visible-ring"
+          >
+            📖 تصفّح منهج الصف الخامس كاملًا (٦ مواد) ←
+          </Link>
+        </div>
+
         <div className="space-y-10">
           <StageSection stage="kg" />
           <StageSection stage="elementary" />
