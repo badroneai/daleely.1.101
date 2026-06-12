@@ -93,6 +93,16 @@ export const tools: Tool[] = [
     scopeByGrade: createScopeByGrade("decimals"),
   },
   {
+    slug: "fraction-operations",
+    title: "عمليات الكسور",
+    description: "تدرّب على جمع الكسور المتشابهة وطرحها وتبسيط الكسور بأبسط صورة مع تمارين تفاعلية",
+    category: "math",
+    gradeLevel: "all",
+    keywords: ["جمع الكسور", "طرح الكسور", "تبسيط الكسور", "الكسور المتشابهة", "أبسط صورة"],
+    visibility: toolVisibilityRules["fraction-operations"],
+    scopeByGrade: createScopeByGrade("fraction-operations"),
+  },
+  {
     slug: "arabic-letters",
     title: "تعلم الحروف العربية",
     description: "تعرف على الحروف العربية مع أشكالها وأصواتها",
