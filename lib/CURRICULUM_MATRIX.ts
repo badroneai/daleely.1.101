@@ -78,6 +78,31 @@ export const toolVisibilityRules: Record<string, ToolVisibility> = {
     maxGrade: "grade6",
     defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
   },
+  "measurement": {
+    minGrade: "grade4",
+    maxGrade: "grade6",
+    defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
+  },
+  "perimeter-area-volume": {
+    minGrade: "grade4",
+    maxGrade: "grade6",
+    defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
+  },
+  "algebra": {
+    minGrade: "grade5",
+    maxGrade: "grade6",
+    defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
+  },
+  "statistics": {
+    minGrade: "grade5",
+    maxGrade: "grade6",
+    defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
+  },
+  "geometry": {
+    minGrade: "grade4",
+    maxGrade: "grade6",
+    defaultHiddenForGrades: ["grade7", "grade8", "grade9"],
+  },
 
   // أدوات اللغة العربية
   "arabic-letters": {
@@ -208,6 +233,21 @@ export const numberTheoryScope: Record<GradeLevel | "all", { max: number }> = {
   all: { max: 50 },
 };
 
+// أدوات إضافية للصف الخامس: مُفعَّلة ضمن نطاق الصفوف فقط
+const enabledFrom = (start: GradeLevel): Record<GradeLevel | "all", { enabled: boolean }> => {
+  const order: (GradeLevel | "all")[] = ["kg1", "kg2", "kg3", "grade1", "grade2", "grade3", "grade4", "grade5", "grade6", "grade7", "grade8", "grade9"];
+  const startIdx = order.indexOf(start);
+  const out = {} as Record<GradeLevel | "all", { enabled: boolean }>;
+  for (const g of order) out[g as GradeLevel] = { enabled: order.indexOf(g) >= startIdx };
+  out.all = { enabled: true };
+  return out;
+};
+export const measurementScope = enabledFrom("grade4");
+export const pavScope = enabledFrom("grade4");
+export const geometryScope = enabledFrom("grade4");
+export const algebraScope = enabledFrom("grade5");
+export const statisticsScope = enabledFrom("grade5");
+
 // اختبار الضرب: نطاق الأسئلة حسب الصف
 export const multiplicationQuizScope: Record<GradeLevel | "all", { tables: number[]; difficulty: "easy" | "medium" | "hard" }> = {
   kg1: { tables: [], difficulty: "easy" },
@@ -299,6 +339,16 @@ export function getToolScope(toolSlug: string, grade: GradeLevel | "all"): any {
       return fractionOpsScope[grade] || fractionOpsScope.all;
     case "number-theory":
       return numberTheoryScope[grade] || numberTheoryScope.all;
+    case "measurement":
+      return measurementScope[grade] || measurementScope.all;
+    case "perimeter-area-volume":
+      return pavScope[grade] || pavScope.all;
+    case "geometry":
+      return geometryScope[grade] || geometryScope.all;
+    case "algebra":
+      return algebraScope[grade] || algebraScope.all;
+    case "statistics":
+      return statisticsScope[grade] || statisticsScope.all;
     case "multiplication-quiz":
       return multiplicationQuizScope[grade] || multiplicationQuizScope.all;
     case "mental-math-add-sub":
