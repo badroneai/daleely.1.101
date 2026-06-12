@@ -16,6 +16,19 @@ export default function Home() {
     <PageLayout>
       <ContinueLearning />
 
+      <Link
+        href="/journey/grade5"
+        className="block mb-10 rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white p-6 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all focus-visible-ring"
+      >
+        <div className="flex items-center gap-4">
+          <span className="text-4xl" aria-hidden="true">🗺️</span>
+          <div>
+            <p className="text-xl font-extrabold mb-1">ابدأ رحلة التعلّم</p>
+            <p className="text-white/90 text-sm">مسار متدرّج محطة بعد محطة — مع توصية لما تتعلّمه الآن وهدف يومي ⭐</p>
+          </div>
+        </div>
+      </Link>
+
       {/* Hero */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-500 via-indigo-500 to-violet-600 px-6 py-10 sm:py-14 text-center text-white shadow-xl mb-12">
         <div aria-hidden="true" className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10" />
