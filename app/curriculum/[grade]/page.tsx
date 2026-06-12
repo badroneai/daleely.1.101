@@ -51,11 +51,14 @@ export default async function CurriculumPage({ params }: { params: Promise<{ gra
                     <ul className="space-y-2">
                       {unit.lessons.map((raw) => {
                         const lesson = normalizeLesson(raw, subject);
-                        if (lesson.productType === "interactive" && lesson.toolSlug) {
+                        if (lesson.productType === "interactive" && (lesson.toolSlug || lesson.activityId)) {
+                          const href = lesson.toolSlug
+                            ? `/tools/${lesson.toolSlug}?grade=${c.grade}`
+                            : `/learn/${lesson.activityId}`;
                           return (
                             <li key={lesson.title}>
                               <Link
-                                href={`/tools/${lesson.toolSlug}?grade=${c.grade}`}
+                                href={href}
                                 className="flex items-center justify-between gap-3 rounded-lg bg-sky-50 hover:bg-sky-100 px-3 py-2 transition-colors focus-visible-ring"
                               >
                                 <span className="text-gray-800">{lesson.title}</span>

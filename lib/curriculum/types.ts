@@ -10,7 +10,8 @@ export type ProductType = "interactive" | "practice" | "lesson";
 export interface LessonSpec {
   title: string;
   productType?: ProductType; // defaults to the subject's defaultProductType
-  toolSlug?: string; // set when productType === "interactive"
+  toolSlug?: string; // interactive math tool: links to /tools/<toolSlug>
+  activityId?: string; // interactive content activity: links to /learn/<activityId>
 }
 
 // A lesson may be written as a bare title (inherits the subject default) or a spec.
@@ -43,9 +44,10 @@ export interface NormalizedLesson {
   title: string;
   productType: ProductType;
   toolSlug?: string;
+  activityId?: string;
 }
 
-/** Resolve a lesson to its effective product type + tool. */
+/** Resolve a lesson to its effective product type + tool/activity. */
 export function normalizeLesson(lesson: Lesson, subject: CurriculumSubject): NormalizedLesson {
   if (typeof lesson === "string") {
     return { title: lesson, productType: subject.defaultProductType };
@@ -54,5 +56,6 @@ export function normalizeLesson(lesson: Lesson, subject: CurriculumSubject): Nor
     title: lesson.title,
     productType: lesson.productType ?? subject.defaultProductType,
     toolSlug: lesson.toolSlug,
+    activityId: lesson.activityId,
   };
 }
